@@ -210,7 +210,7 @@ const getChangeReport = (market) => __awaiter(void 0, void 0, void 0, function* 
     }
     return { reportWorthy, changeNote, commentsNote };
 });
-const checkBets = () => __awaiter(void 0, void 0, void 0, function* () {
+const checkAndSendUpdates = () => __awaiter(void 0, void 0, void 0, function* () {
     const markets = yield Promise.all(trackedQuestions.map(url => getMarket(getJsonUrl(url))));
     for (const market of markets) {
         const { reportWorthy, changeNote, commentsNote } = yield getChangeReport(market);
@@ -220,4 +220,4 @@ const checkBets = () => __awaiter(void 0, void 0, void 0, function* () {
         }
     }
 });
-checkBets();
+checkAndSendUpdates();

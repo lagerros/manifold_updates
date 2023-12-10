@@ -370,7 +370,7 @@ const getChangeReport = async (market: Market): Promise<{reportWorthy: boolean, 
   return { reportWorthy, changeNote, commentsNote };
 };
 
-const checkBets = async (): Promise<void> => {
+const checkAndSendUpdates = async (): Promise<void> => {
   const markets = await Promise.all(trackedQuestions.map(url => getMarket(getJsonUrl(url))));
   
   for (const market of markets) {
@@ -383,4 +383,4 @@ const checkBets = async (): Promise<void> => {
   }
 };
 
-checkBets();
+checkAndSendUpdates();
