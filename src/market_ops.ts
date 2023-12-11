@@ -49,75 +49,56 @@ const getCommentsNote = async (marketId: string, t: number): Promise<string> => 
 };
 
 const getChangeReport = async (market: Market): Promise<{reportWorthy: boolean, changeNote: string, commentsNote: string, timeWindow: number}> => {
-  let reportWorthy = false;
-  let changeNote = '';
-  let commentsNote = '';
-  let timeWindow = 24;
-  const delta = 0.02
-  
-  const getDirectionAndNote = (change: number, period: string): { direction: string, changeNote: string, time: number } => {
-    let direction = '';
-    let changeNote = '';
-    let time = 72;
-    if (Math.abs(change) > delta) {
-      direction = change > 0 ? ':chart_with_upwards_trend: Up' : ':chart_with_downwards_trend: Down';
-      changeNote = `${direction} ${formatProb(change)}% in the last ${period}`;
-      time = period === 'day' ? 24 : period === 'week' ? 24 * 7 : 24 * 30;
+  const delta = 0.02;
+  const periods: ('day'|'week'|'month')[] = ['day', 'week', 'month'];
+  const periodHours = { day: 24, week: 24 * 7, month: 24 * 30 };
+
+  const calculateChangeAndNote = (change: number, period: 'day'|'week'|'month'): { direction: string, changeNote: string, time: number } => {
+    if (Math.abs(change) <= delta) {
+      return { direction: '', changeNote: '', time: 72 }
+    } else {
+      const direction = change > 0 ? ':chart_with_upwards_trend: Up' : ':chart_with_downwards_trend: Down';
+      const changeNote = `${direction} ${formatProb(change)}% in the last ${period}`;
+      const time = periodHours[period];
+      return { direction, changeNote, time };
     }
-    return { direction, changeNote, time };
   };
 
-  if (market.outcomeType === 'BINARY') {
+  const getProbChangesForPeriods = async (contractId: string) => {
     const probChanges = {
-      day: await getProbChange(market.id, 24),
-      week: await getProbChange(market.id, 24 * 7),
-      month: await getProbChange(market.id, 24 * 30),
+      day: await getProbChange(contractId, 24),
+      week: await getProbChange(contractId, 24*7),
+      month: await getProbChange(contractId, 24*7*4),
     };
+    return probChanges;
+  };
 
-    const marketWithChanges: BinaryMarketWithProbChanges = { ...market, probChanges };
-    
-    if (probChanges.day > delta || probChanges.week > delta || probChanges.month > delta) {
-      reportWorthy = true;
-      let { changeNote: dayNote, time: dayTime } = getDirectionAndNote(probChanges.day, 'day');
-      let { changeNote: weekNote, time: weekTime } = getDirectionAndNote(probChanges.week, 'week');
-      let { changeNote: monthNote, time: monthTime } = getDirectionAndNote(probChanges.month, 'month');
-      changeNote = dayNote || weekNote || monthNote;
-      timeWindow = dayNote ? dayTime : weekNote ? weekTime : monthTime;
+  const evaluateOutcomeType = async (id: string) => {
+    const probChanges = await getProbChangesForPeriods(id);
+    const changes = periods.map(period => ({...calculateChangeAndNote(probChanges[period], period), period}));
+    const significantChange = changes.find(change => change.changeNote !== '');
+    return significantChange ? {reportWorthy: true, changeNote: significantChange.changeNote, commentTime: significantChange.time} : {reportWorthy: false, changeNote: '', commentTime: 72};
+  };
+
+  const evaluateMarket = async (m: Market) => {
+    switch (m.outcomeType) {
+      case 'BINARY':
+        return evaluateOutcomeType(m.id);
+      case 'MULTIPLE_CHOICE':
+        const reportNotes = await Promise.all(m.answers.map(async answer => {
+          const {reportWorthy, changeNote} = await evaluateOutcomeType(answer.contractId);
+          return reportWorthy ? `Answer "${answer.text}": ${changeNote}` : '';
+        }));
+        const significantReportNotes = reportNotes.filter(note => note !== '');
+        return {reportWorthy: significantReportNotes.length > 0, changeNote: significantReportNotes.join(' '), commentTime: 72};
+      default:
+        return {reportWorthy: false, changeNote: '', commentTime: 72};
     }
-  } 
-  else if (market.outcomeType === 'MULTIPLE_CHOICE') {
-    const reportNotes: string[] = [];
+  };
 
-    for (const answer of market.answers) {
-      let { probChanges } = answer;
-      
-      if (!probChanges) {
-        probChanges = {
-          day: await getProbChange(answer.contractId, 24), 
-          week: await getProbChange(answer.contractId, 24 * 7),
-          month: await getProbChange(answer.contractId, 24 * 30),
-        }
-      }
-      
-      if (probChanges.day > delta || probChanges.week > delta || probChanges.month > delta) {
-        reportWorthy = true;
-        let { changeNote: dayNote, time: dayTime } = getDirectionAndNote(probChanges.day, 'day');
-        let { changeNote: weekNote, time: weekTime } = getDirectionAndNote(probChanges.week, 'week');
-        let { changeNote: monthNote, time: monthTime } = getDirectionAndNote(probChanges.month, 'month');
-        const reportNote = dayNote || weekNote || monthNote;
-        reportNotes.push(`Answer "${answer.text}": `+ changeNote);
-        timeWindow = dayNote ? dayTime : weekNote ? weekTime : monthTime;
-      }
-    }
-
-    changeNote = reportNotes.join(' ');
-  }
-  
-  if (reportWorthy) {
-    commentsNote = await getCommentsNote(market.id, timeWindow);
-  }
-
-  return { reportWorthy, changeNote, commentsNote, timeWindow };
+  const {reportWorthy, changeNote, commentTime} = await evaluateMarket(market);
+  const commentsNote = reportWorthy ? await getCommentsNote(market.id, commentTime) : '';
+  return { reportWorthy, changeNote, commentsNote, timeWindow: 24 };
 };
 
 export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promise<void> => {
