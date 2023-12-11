@@ -16,6 +16,8 @@ const axios_1 = __importDefault(require("axios"));
 const moment_1 = __importDefault(require("moment"));
 const pg_1 = require("pg");
 require("dotenv/config");
+const isDeploy = process.env[`IS_DEPLOY`] === `true`;
+console.log("Is deploy: ", isDeploy);
 const client = new pg_1.Client({
     connectionString: process.env['DATABASE_URL'],
     ssl: {
@@ -111,7 +113,7 @@ const updateLastSlackInfo = (url, timeWindow) => __awaiter(void 0, void 0, void 
         console.error('Error updating lastSlackTime and lastSlackHourWindow in the database:', error);
     }
 });
-const sendSlackMessage = (url, marketName, marketId, report, comments, timeWindow) => __awaiter(void 0, void 0, void 0, function* () {
+const sendSlackMessage = (url, marketName, marketId, report, channelId, comments, timeWindow) => __awaiter(void 0, void 0, void 0, function* () {
     const payload = {
         url,
         market_name: marketName,
@@ -255,9 +257,10 @@ const checkAndSendUpdates = (localMarkets) => __awaiter(void 0, void 0, void 0, 
         const isTimeForNewUpdate = !!localMarket && (!localMarket.lastslacktime ? true : ((Date.now() - new Date(localMarket.lastslacktime).getTime()) > (timeWindow * 60 * 60 * 1000)));
         const toSendReport = (reportWorthy && SLACK_ON && isTimeForNewUpdate);
         console.log("Send report? ", toSendReport, changeNote, fetchedMarket.url);
+        const channelId = isDeploy ? "C069HTSPS69" : "C069C8Z94RY";
         if (toSendReport) {
             const marketName = (fetchedMarket.outcomeType === "BINARY" ? `(${formatProb(fetchedMarket.probability)}%) ` : "") + fetchedMarket.question;
-            yield sendSlackMessage(fetchedMarket.url, marketName, fetchedMarket.id, changeNote, commentsNote);
+            yield sendSlackMessage(fetchedMarket.url, marketName, fetchedMarket.id, changeNote, commentsNote, channelId);
             updateLocalMarket(localMarket._id, new Date(), timeWindow, changeNote);
         }
     }
