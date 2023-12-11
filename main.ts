@@ -450,8 +450,6 @@ const updateLocalMarket = async (id: string, lastslacktime: Date, lastslackhourw
   }
 };
 
-console.log("hi")
-
 const checkAndSendUpdates = async (localMarkets:TrackedMarket[]): Promise<void> => {
   const fetchedMarkets = await Promise.all(localMarkets.map(q => getMarket(getJsonUrl(q.url)))); // todo: this is silly, fix
   
