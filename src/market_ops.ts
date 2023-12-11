@@ -15,7 +15,7 @@ const getProbChange = async (contractId: string, t: number): Promise<number> => 
   if (recentBets.length > 0) {
     const firstBet = recentBets[0];
     const lastBet = recentBets[recentBets.length - 1];
-    return Math.abs(firstBet.probBefore - lastBet.probAfter);
+    return firstBet.probBefore - lastBet.probAfter;
   }
   
   return 0;
@@ -61,7 +61,7 @@ const getChangeReport = async (market: Market): Promise<{reportWorthy: boolean, 
     let direction = '';
     let changeNote = '';
     let time = 72;
-    if (change > delta) {
+    if (Math.abs(change) > delta) {
       direction = change > 0 ? ':chart_with_upwards_trend: Up' : ':chart_with_downwards_trend: Down';
       changeNote = `${direction} ${formatProb(change)}% in the last ${period}`;
       time = period === 'day' ? 24 : period === 'week' ? 24 * 7 : 24 * 30;
