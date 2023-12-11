@@ -1,13 +1,14 @@
 import axios from "axios";
 import {updateLastSlackInfo} from "./database";
 
-export const sendSlackMessage = async (url: string, marketName: string, marketId: string, report: string, comments?:string, timeWindow?: number): Promise<void> => {
+export const sendSlackMessage = async (url: string, marketName: string, marketId: string, report: string, channelId: string, comments?:string, timeWindow?: number): Promise<void> => {
   const payload = {
     url,
     market_name: marketName,
     market_id: marketId,
     report,
-    comments
+    comments,
+    channelId
   };
 
   try {

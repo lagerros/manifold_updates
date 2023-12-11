@@ -6,6 +6,7 @@ import {BinaryMarketWithProbChanges, Market, TrackedMarket} from "./types";
 import {formatProb, getJsonUrl} from "./util";
 
 const SLACK_ON = true;
+const isDeploy = process.env[`IS_DEPLOY`] === `true`;
 
 const getProbChange = async (contractId: string, t: number): Promise<number> => {
   const bets = await getBets(contractId);
@@ -121,21 +122,24 @@ const getChangeReport = async (market: Market): Promise<{reportWorthy: boolean, 
   return { reportWorthy, changeNote, commentsNote, timeWindow };
 };
 
-export const checkAndSendUpdates = async (localMarkets:TrackedMarket[]): Promise<void> => {
+export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promise<void> => {
   const fetchedMarkets = await Promise.all(localMarkets.map(q => getMarket(getJsonUrl(q.url)))); // todo: this is silly, fix
-  
+
   for (const fetchedMarket of fetchedMarkets) {
     const localMarket = localMarkets.find(q => q.url === fetchedMarket.url);
     const { reportWorthy, changeNote, commentsNote, timeWindow } = await getChangeReport(fetchedMarket);
-    const isTimeForNewUpdate = !!localMarket && (!localMarket.lastslacktime ? true : ((Date.now() - new Date(localMarket.lastslacktime).getTime()) > (timeWindow * 60 * 60 * 1000))) 
+    const isTimeForNewUpdate = !!localMarket && (!localMarket.lastslacktime ? true : ((Date.now() - new Date(localMarket.lastslacktime).getTime()) > (timeWindow * 60 * 60 * 1000)))
     const toSendReport = (reportWorthy && SLACK_ON && isTimeForNewUpdate)
-    
+
     console.log("Send report? ", toSendReport, changeNote, fetchedMarket.url)
+
+
+    const channelId = isDeploy ? "C069HTSPS69" : "C069C8Z94RY"
 
     if (toSendReport) {
       const marketName = (fetchedMarket.outcomeType === "BINARY" ? `(${formatProb(fetchedMarket.probability)}%) ` : "") + fetchedMarket.question
-      await sendSlackMessage(fetchedMarket.url, marketName, fetchedMarket.id, changeNote, commentsNote);
-      updateLocalMarket(localMarket._id, new Date(), timeWindow, changeNote) 
-    } 
+      await sendSlackMessage(fetchedMarket.url, marketName, fetchedMarket.id, changeNote, commentsNote, channelId);
+      updateLocalMarket(localMarket._id, new Date(), timeWindow, changeNote)
+    }
   }
 };
