@@ -48,13 +48,11 @@ const getCommentsNote = async (marketId: string, t: number): Promise<string> => 
   return report;
 };
 
-// TODO: move commentTime and timeWindow into same variable? 
 const getChangeReport = async (market: Market): Promise<{reportWorthy: boolean, changeNote: string, commentsNote: string, timeWindow: number}> => {
   let reportWorthy = false;
   let changeNote = '';
   let commentsNote = '';
   let timeWindow = 24;
-  let commentTime = 72; // default value
   const delta = 0.02
   
   const getDirectionAndNote = (change: number, period: string): { direction: string, changeNote: string, time: number } => {
@@ -84,7 +82,7 @@ const getChangeReport = async (market: Market): Promise<{reportWorthy: boolean, 
       let { changeNote: weekNote, time: weekTime } = getDirectionAndNote(probChanges.week, 'week');
       let { changeNote: monthNote, time: monthTime } = getDirectionAndNote(probChanges.month, 'month');
       changeNote = dayNote || weekNote || monthNote;
-      commentTime = dayNote ? dayTime : weekNote ? weekTime : monthTime;
+      timeWindow = dayNote ? dayTime : weekNote ? weekTime : monthTime;
     }
   } 
   else if (market.outcomeType === 'MULTIPLE_CHOICE') {
@@ -108,7 +106,7 @@ const getChangeReport = async (market: Market): Promise<{reportWorthy: boolean, 
         let { changeNote: monthNote, time: monthTime } = getDirectionAndNote(probChanges.month, 'month');
         const reportNote = dayNote || weekNote || monthNote;
         reportNotes.push(`Answer "${answer.text}": `+ changeNote);
-        commentTime = dayNote ? dayTime : weekNote ? weekTime : monthTime;
+        timeWindow = dayNote ? dayTime : weekNote ? weekTime : monthTime;
       }
     }
 
@@ -116,30 +114,29 @@ const getChangeReport = async (market: Market): Promise<{reportWorthy: boolean, 
   }
   
   if (reportWorthy) {
-    commentsNote = await getCommentsNote(market.id, commentTime);
+    commentsNote = await getCommentsNote(market.id, timeWindow);
   }
 
   return { reportWorthy, changeNote, commentsNote, timeWindow };
 };
 
 export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promise<void> => {
-  const fetchedMarkets = await Promise.all(localMarkets.map(q => getMarket(getJsonUrl(q.url)))); // todo: this is silly, fix
+  const fetchedMarkets = await Promise.all(localMarkets.map(m => getMarket(getJsonUrl(m.url))));
 
-  for (const fetchedMarket of fetchedMarkets) {
+  await Promise.all(fetchedMarkets.map(async (fetchedMarket) => {
     const localMarket = localMarkets.find(q => q.url === fetchedMarket.url);
     const { reportWorthy, changeNote, commentsNote, timeWindow } = await getChangeReport(fetchedMarket);
     const isTimeForNewUpdate = !!localMarket && (!localMarket.lastslacktime ? true : ((Date.now() - new Date(localMarket.lastslacktime).getTime()) > (timeWindow * 60 * 60 * 1000)))
-    const toSendReport = (reportWorthy && SLACK_ON && isTimeForNewUpdate)
+    const toSendReport = reportWorthy && SLACK_ON && isTimeForNewUpdate;
 
-    console.log("Send report? ", toSendReport, changeNote, fetchedMarket.url)
+    console.log("Send report? ", toSendReport, changeNote, fetchedMarket.url);
 
-
-    const channelId = isDeploy ? "C069HTSPS69" : "C069C8Z94RY"
+    const channelId = isDeploy ? "C069HTSPS69" : "C069C8Z94RY";
 
     if (toSendReport) {
-      const marketName = (fetchedMarket.outcomeType === "BINARY" ? `(${formatProb(fetchedMarket.probability)}%) ` : "") + fetchedMarket.question
+      const marketName = (fetchedMarket.outcomeType === "BINARY" ? `(${formatProb(fetchedMarket.probability)}%) ` : "") + fetchedMarket.question;
       await sendSlackMessage(fetchedMarket.url, marketName, fetchedMarket.id, changeNote, commentsNote, channelId);
-      updateLocalMarket(localMarket._id, new Date(), timeWindow, changeNote)
+      updateLocalMarket(localMarket._id, new Date(), timeWindow, changeNote);
     }
-  }
+  }));
 };
