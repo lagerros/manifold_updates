@@ -1,6 +1,8 @@
 import axios from 'axios';
 import moment from 'moment';
 import { Client } from 'pg';
+import 'dotenv/config';
+
 
 const client = new Client({
   connectionString: process.env['DATABASE_URL'],

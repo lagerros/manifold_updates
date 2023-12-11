@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const axios_1 = __importDefault(require("axios"));
 const moment_1 = __importDefault(require("moment"));
 const pg_1 = require("pg");
+require("dotenv/config");
 const client = new pg_1.Client({
     connectionString: process.env['DATABASE_URL'],
     ssl: {
@@ -30,37 +31,6 @@ client.connect(err => {
         // Here you can proceed to execute queries on the database
     }
 });
-const addUserIdColumn = () => __awaiter(void 0, void 0, void 0, function* () {
-    const queryText = `ALTER TABLE Users ADD COLUMN user_id TEXT;`;
-    try {
-        yield client.query(queryText);
-        console.log('Column "user_id" has been added to the "Users" table');
-    }
-    catch (error) {
-        console.error('Error adding column "user_id" to the "Users" table:', error);
-    }
-});
-const addUsers = () => __awaiter(void 0, void 0, void 0, function* () {
-    const queryText = `
-    INSERT INTO Users (display_name, user_id, dev_channel_id, prod_channel_id)
-    VALUES 
-    ('jacob', 'U02A02QGJEM', 'C069C8Z94RY', 'C069HTSPS69'),
-    ('nora', 'D03R81GD3GV', 'C069C8Z94RY', NULL)
-    ON CONFLICT DO NOTHING;
-  `;
-    try {
-        yield client.query(queryText);
-        console.log('New users have been added to the "Users" table');
-    }
-    catch (error) {
-        console.error('Error adding new users to the "Users" table:', error);
-    }
-});
-// Call the functions to alter the Users table and add new users
-(() => __awaiter(void 0, void 0, void 0, function* () {
-    yield addUserIdColumn();
-    yield addUsers();
-}))();
 const SLACK_ON = true;
 const fetchTrackedQuestions = () => __awaiter(void 0, void 0, void 0, function* () {
     const queryText = 'SELECT _id, url, lastslacktime, lastslackhourwindow, tracked FROM markets WHERE tracked = true';
