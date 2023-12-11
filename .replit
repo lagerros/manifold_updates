@@ -27,5 +27,6 @@ requiredFiles = [".replit", "replit.nix", ".config"]
 
 [deployment]
 run = ["sh", "-c", "npm run start"]
-deploymentTarget = "cloudrun"
-ignorePorts = false
+deploymentTarget = "gce"
+ignorePorts = true
+build = ["sh", "-c", "npm run build"]
