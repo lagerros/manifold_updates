@@ -30,39 +30,37 @@ client.connect(err => {
         // Here you can proceed to execute queries on the database
     }
 });
-// const trackedQuestions = [
-//   "https://manifold.markets/MichaelWheatley/who-first-builds-an-artificial-gene",
-//   "https://manifold.markets/Ledger/will-china-be-competitive-in-the-ll",
-//   "https://manifold.markets/ZviMowshowitz/will-google-have-the-best-llm-by-eo-b4ad29f8b98d",
-//   "https://manifold.markets/MatthewBarnett/will-a-machine-learning-training-ru-1fc7686995d5",
-//   "https://manifold.markets/MatthewBarnett/will-an-entity-purchase-at-least-10",
-//   "https://manifold.markets/MatthewBarnett/will-an-entity-be-confirmed-to-have",
-//   "https://manifold.markets/MatthewBarnett/will-nvidias-market-capitalization",
-//   "https://manifold.markets/MatthewBarnett/will-the-world-economy-grow-by-more-990c1df2ab63",
-//   "https://manifold.markets/MatthewBarnett/will-any-top-ai-lab-commit-to-a-mor",
-//   "https://manifold.markets/Duncn/will-humans-deliberately-cause-an-a",
-//   "https://manifold.markets/BestGuess/will-there-be-a-global-pause-on-cut",
-//   "https://manifold.markets/SimeonCampos/will-openai-pause-capabilities-rd-b",
-//   "https://manifold.markets/CalebW/in-2030-will-we-think-flis-6-month",
-//   "https://manifold.markets/MatthewBarnett/will-we-have-nearcomplete-automatio",
-//   "https://manifold.markets/MatthewBarnett/will-ais-be-widely-recognized-as-ha-6d69b9aa5a3a",
-//   "https://manifold.markets/NoaNabeshima/whole-brain-emulation-will-come-bef",
-//   "https://manifold.markets/logaems/human-whole-brain-emulation-before",
-//   "https://manifold.markets/rotatingpaguro/whole-primate-brain-connectome-by-2",
-//   "https://manifold.markets/SneakySly/will-llm-hallucinations-be-a-fixed-0f4541372303",
-//   "https://manifold.markets/vluzko/will-there-be-an-advance-in-llms-co",
-//   "https://manifold.markets/PeterWildeford/will-an-llm-have-been-reported-to-e",
-//   "https://manifold.markets/Austin/will-an-ai-get-gold-on-any-internat",
-//   "https://manifold.markets/EliezerYudkowsky/is-lecun-right-that-opensource-ai-w",
-//   "https://manifold.markets/EliezerYudkowsky/will-artificial-superintelligence-e",
-//   "https://manifold.markets/IsaacKing/by-the-end-of-2028-will-there-be-a-9a7a1b6d31a7",
-//   "https://manifold.markets/MartinRandall/will-ai-wipe-out-humanity-before-th-d8733b2114a8",
-//   "https://manifold.markets/EliezerYudkowsky/will-ai-wipe-out-humanity-by-2030-r",
-//   "https://manifold.markets/EliezerYudkowsky/if-artificial-general-intelligence",
-//   "https://manifold.markets/EliezerYudkowsky/will-hamas-carry-out-at-least-3-let",
-//   "https://manifold.markets/levifinkelstein/will-we-find-out-in-2023-about-a-na-0818ad690161",
-//   "https://manifold.markets/ZviMowshowitz/will-ai-write-75-of-social-media-vi"
-// ]
+const addUserIdColumn = () => __awaiter(void 0, void 0, void 0, function* () {
+    const queryText = `ALTER TABLE Users ADD COLUMN user_id TEXT;`;
+    try {
+        yield client.query(queryText);
+        console.log('Column "user_id" has been added to the "Users" table');
+    }
+    catch (error) {
+        console.error('Error adding column "user_id" to the "Users" table:', error);
+    }
+});
+const addUsers = () => __awaiter(void 0, void 0, void 0, function* () {
+    const queryText = `
+    INSERT INTO Users (display_name, user_id, dev_channel_id, prod_channel_id)
+    VALUES 
+    ('jacob', 'U02A02QGJEM', 'C069C8Z94RY', 'C069HTSPS69'),
+    ('nora', 'D03R81GD3GV', 'C069C8Z94RY', NULL)
+    ON CONFLICT DO NOTHING;
+  `;
+    try {
+        yield client.query(queryText);
+        console.log('New users have been added to the "Users" table');
+    }
+    catch (error) {
+        console.error('Error adding new users to the "Users" table:', error);
+    }
+});
+// Call the functions to alter the Users table and add new users
+(() => __awaiter(void 0, void 0, void 0, function* () {
+    yield addUserIdColumn();
+    yield addUsers();
+}))();
 const SLACK_ON = true;
 const fetchTrackedQuestions = () => __awaiter(void 0, void 0, void 0, function* () {
     const queryText = 'SELECT _id, url, lastslacktime, lastslackhourwindow, tracked FROM markets WHERE tracked = true';
@@ -304,7 +302,7 @@ const loop = () => __awaiter(void 0, void 0, void 0, function* () {
         catch (error) {
             console.error(error);
         }
-        yield sleep(1000); // 10 seconds delay before proceeding to the next iteration of the loop
+        yield sleep(60 * 60 * 1000); // 10 seconds delay before proceeding to the next iteration of the loop
     }
 });
 loop(); // assume takes 1 second to run
