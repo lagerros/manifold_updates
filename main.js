@@ -83,7 +83,6 @@ const fetchTrackedQuestions = () => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 const getJsonUrl = (url) => {
-    console.log(url);
     const urlObj = new URL(url);
     const slug = urlObj.pathname.split('/').pop();
     return `https://manifold.markets/api/v0/slug/${slug}`;
@@ -210,11 +209,12 @@ const getChangeReport = (market) => __awaiter(void 0, void 0, void 0, function* 
     let commentsNote = '';
     let timeWindow = 24;
     let commentTime = 72; // default value
+    const delta = 0.02;
     const getDirectionAndNote = (change, period) => {
         let direction = '';
         let changeNote = '';
         let time = 72;
-        if (change > 0.1) {
+        if (change > delta) {
             direction = change > 0 ? ':chart_with_upwards_trend: Up' : ':chart_with_downwards_trend: Down';
             changeNote = `${direction} ${formatProb(change)}% in the last ${period}`;
             time = period === 'day' ? 24 : period === 'week' ? 24 * 7 : 24 * 30;
@@ -228,7 +228,7 @@ const getChangeReport = (market) => __awaiter(void 0, void 0, void 0, function* 
             month: yield getProbChange(market.id, 24 * 30),
         };
         const marketWithChanges = Object.assign(Object.assign({}, market), { probChanges });
-        if (probChanges.day > 0.1 || probChanges.week > 0.1 || probChanges.month > 0.1) {
+        if (probChanges.day > delta || probChanges.week > delta || probChanges.month > delta) {
             reportWorthy = true;
             let { changeNote: dayNote, time: dayTime } = getDirectionAndNote(probChanges.day, 'day');
             let { changeNote: weekNote, time: weekTime } = getDirectionAndNote(probChanges.week, 'week');
@@ -248,7 +248,7 @@ const getChangeReport = (market) => __awaiter(void 0, void 0, void 0, function* 
                     month: yield getProbChange(answer.contractId, 24 * 30),
                 };
             }
-            if (probChanges.day > 0.1 || probChanges.week > 0.1 || probChanges.month > 0.1) {
+            if (probChanges.day > delta || probChanges.week > delta || probChanges.month > delta) {
                 reportWorthy = true;
                 let { changeNote: dayNote, time: dayTime } = getDirectionAndNote(probChanges.day, 'day');
                 let { changeNote: weekNote, time: weekTime } = getDirectionAndNote(probChanges.week, 'week');
@@ -288,7 +288,7 @@ const checkAndSendUpdates = (localMarkets) => __awaiter(void 0, void 0, void 0, 
         const toSendReport = (reportWorthy && SLACK_ON && isTimeForNewUpdate);
         console.log("Send report? ", toSendReport, changeNote, fetchedMarket.url);
         if (toSendReport) {
-            const marketName = fetchedMarket.outcomeType === "BINARY" ? `(${formatProb(fetchedMarket.probability)}%) ` : "" + fetchedMarket.question;
+            const marketName = (fetchedMarket.outcomeType === "BINARY" ? `(${formatProb(fetchedMarket.probability)}%) ` : "") + fetchedMarket.question;
             yield sendSlackMessage(fetchedMarket.url, marketName, fetchedMarket.id, changeNote, commentsNote);
             updateLocalMarket(localMarket._id, new Date(), timeWindow, changeNote);
         }
@@ -304,7 +304,7 @@ const loop = () => __awaiter(void 0, void 0, void 0, function* () {
         catch (error) {
             console.error(error);
         }
-        yield sleep(10000); // 10 seconds delay before proceeding to the next iteration of the loop
+        yield sleep(1000); // 10 seconds delay before proceeding to the next iteration of the loop
     }
 });
 loop(); // assume takes 1 second to run
