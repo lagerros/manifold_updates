@@ -19,9 +19,9 @@ export const sendSlackMessage = async (url: string, marketName: string, marketId
     });
     if (response.status === 200 && timeWindow) {
       // Slack message sent successfully, update database
-      await updateLastSlackInfo(url, timeWindow);
+      await updateLastSlackInfo(url, timeWindow, report);
     }
-  } catch (error) {
-    console.error(`Error occurred while sending Slack message: ${error}`);
+  } catch (error:any) {
+    console.error(`Error occurred while sending Slack message: ${error.response.data}`);
   }
 };
