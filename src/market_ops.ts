@@ -49,7 +49,7 @@ const getCommentsNote = async (marketId: string, t: number): Promise<string> => 
 };
 
 const getChangeReport = async (market: Market): Promise<{reportWorthy: boolean, changeNote: string, commentsNote: string, timeWindow: number}> => {
-  const delta = 0.02;
+  const delta = 0.1;
   const periods: ('day'|'week'|'month')[] = ['day', 'week', 'month'];
   const periodHours = { day: 24, week: 24 * 7, month: 24 * 30 };
 
@@ -104,13 +104,13 @@ const getChangeReport = async (market: Market): Promise<{reportWorthy: boolean, 
 export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promise<void> => {
   const fetchedMarkets = await Promise.all(localMarkets.map(m => getMarket(getJsonUrl(m.url))));
 
-  await fetchedMarkets.map(async (fetchedMarket) => {
+  fetchedMarkets.forEach(async (fetchedMarket) => {
     const localMarket = localMarkets.find(q => q.url === fetchedMarket.url);
     const { reportWorthy, changeNote, commentsNote, timeWindow } = await getChangeReport(fetchedMarket);
     const isTimeForNewUpdate = !!localMarket && (!localMarket.lastslacktime ? true : ((Date.now() - new Date(localMarket.lastslacktime).getTime()) > (timeWindow * 60 * 60 * 1000)))
     const toSendReport = reportWorthy && SLACK_ON && isTimeForNewUpdate;
 
-    console.log("Send report? ", toSendReport, changeNote, fetchedMarket.url);
+    console.log(`Send report? ${toSendReport}! (reportWorthy ${reportWorthy}, SLACK_ON ${SLACK_ON}, isTimeForNewUpdate ${isTimeForNewUpdate})`, changeNote, fetchedMarket.url);
 
     const channelId = isDeploy ? "C069HTSPS69" : "C06ACLAUTDE";
 
