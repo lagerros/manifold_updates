@@ -104,7 +104,7 @@ const getChangeReport = async (market: Market): Promise<{reportWorthy: boolean, 
 export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promise<void> => {
   const fetchedMarkets = await Promise.all(localMarkets.map(m => getMarket(getJsonUrl(m.url))));
 
-  await Promise.all(fetchedMarkets.map(async (fetchedMarket) => {
+  await fetchedMarkets.map(async (fetchedMarket) => {
     const localMarket = localMarkets.find(q => q.url === fetchedMarket.url);
     const { reportWorthy, changeNote, commentsNote, timeWindow } = await getChangeReport(fetchedMarket);
     const isTimeForNewUpdate = !!localMarket && (!localMarket.lastslacktime ? true : ((Date.now() - new Date(localMarket.lastslacktime).getTime()) > (timeWindow * 60 * 60 * 1000)))
@@ -116,7 +116,7 @@ export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promis
 
     if (toSendReport) {
       const marketName = (fetchedMarket.outcomeType === "BINARY" ? `(${formatProb(fetchedMarket.probability)}%) ` : "") + fetchedMarket.question;
-      await sendSlackMessage(fetchedMarket.url, marketName, fetchedMarket.id, changeNote, commentsNote, channelId);
+      await sendSlackMessage({url: fetchedMarket.url, market_name: marketName, market_id: fetchedMarket.id, report: changeNote, comments: commentsNote, channelId});
     }
-  }));
+  });
 };
