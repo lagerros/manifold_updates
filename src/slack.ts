@@ -34,6 +34,7 @@ export const sendSlackMessage = async ({
     });
     if (response.status === 200 && timeWindow) {
       // Slack message sent successfully, update database
+      console.log("Slack message succesful, updating db...")
       await updateLastSlackInfo(url, timeWindow, report);
     }
   } catch (error:any) {
