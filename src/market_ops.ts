@@ -112,7 +112,7 @@ export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promis
 
     console.log(`Send report? ${toSendReport}! (reportWorthy ${reportWorthy}, SLACK_ON ${SLACK_ON}, isTimeForNewUpdate ${isTimeForNewUpdate})`, changeNote, fetchedMarket.url);
 
-    const channelId = isDeploy ? "C069HTSPS69" : "C06ACLAUTDE";
+    const channelId = isDeploy ? "C069HTSPS69" : "C069HTSPS69";
 
     if (toSendReport) {
       const marketName = (fetchedMarket.outcomeType === "BINARY" ? `(${formatProb(fetchedMarket.probability)}%) ` : "") + fetchedMarket.question;
