@@ -15,8 +15,8 @@ export const sendSlackMessage = async ({
   market_id: string;
   report: string;
   channelId: string;
+  timeWindow: number;
   comments?: string;
-  timeWindow?: number;
 }): Promise<void> => {
   const payload = {
     channelId,
@@ -34,8 +34,10 @@ export const sendSlackMessage = async ({
     });
     if (response.status === 200 && timeWindow) {
       // Slack message sent successfully, update database
-      console.log("Slack message succesful, updating db...")
-      await updateLastSlackInfo(url, timeWindow, report);
+      const isDeploy = process.env[`IS_DEPLOY`] === `true`;
+      if (isDeploy) {
+        await updateLastSlackInfo(url, timeWindow, report);
+      }
     }
   } catch (error:any) {
     console.error(`Error occurred while sending Slack message: ${JSON.stringify(error.response.data)}`);
