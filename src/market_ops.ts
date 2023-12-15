@@ -2,11 +2,9 @@ import moment from "moment";
 import { updateLocalMarket } from "./database";
 import { getBets, getComments, getMarket } from "./manifold_api";
 import { sendSlackMessage } from "./slack";
-import { BinaryMarketWithProbChanges, Market, TrackedMarket } from "./types";
+import { Market, TrackedMarket, Answer, probChangesType } from "./types";
 import { formatProb, getJsonUrl, isTimeForNewUpdate } from "./util";
-
-const SLACK_ON = true;
-const isDeploy = process.env[`IS_DEPLOY`] === `true`;
+import { microDebugging, SLACK_ON, isDeploy, delta } from "./run_settings";
 
 const getProbChange = async (contractId: string, t: number): Promise<number> => {
   const bets = await getBets(contractId);
@@ -50,7 +48,6 @@ const getCommentsNote = async (marketId: string, t: number): Promise<string> => 
 };
 
 const getChangeReport = async (market: Market): Promise<{ reportWorthy: boolean, changeNote: string, commentsNote: string, timeWindow: number }> => {
-  const delta = 0.1;
   const periods: ('day' | 'week' | 'month')[] = ['day', 'week', 'month'];
   const periodHours = { day: 24, week: 24 * 7, month: 24 * 30 };
 
@@ -74,8 +71,8 @@ const getChangeReport = async (market: Market): Promise<{ reportWorthy: boolean,
     return probChanges;
   };
 
-  const evaluateOutcomeType = async (id: string) => {
-    const probChanges = await getProbChangesForPeriods(id);
+  const evaluateOutcomeType = async (market: Market | Answer, probChanges:probChangesType) => {
+    
     const changes = periods.map(period => ({ ...calculateChangeAndNote(probChanges[period], period), period }));
     const significantChange = changes.find(change => change.changeNote !== '');
     return significantChange ? { reportWorthy: true, changeNote: significantChange.changeNote, commentTime: significantChange.time } : { reportWorthy: false, changeNote: '', commentTime: 72 };
@@ -84,11 +81,13 @@ const getChangeReport = async (market: Market): Promise<{ reportWorthy: boolean,
   const evaluateMarket = async (m: Market) => {
     switch (m.outcomeType) {
       case 'BINARY':
-        return evaluateOutcomeType(m.id);
+        const probChanges = await getProbChangesForPeriods(m.id);
+        return evaluateOutcomeType(m, probChanges);
       case 'MULTIPLE_CHOICE':
         const reportNotes = await Promise.all(m.answers.map(async answer => {
-          const { reportWorthy, changeNote } = await evaluateOutcomeType(answer.contractId);
-          return reportWorthy ? `Answer "${answer.text}": ${changeNote}` : '';
+          const probChanges = answer.probChanges ?? { day: 0, week: 0, month: 0 }
+          const { reportWorthy, changeNote } = await evaluateOutcomeType(answer, probChanges);
+          return reportWorthy ? `Answer "${answer.text}": ${changeNote}.\n` : '';
         }));
         const significantReportNotes = reportNotes.filter(note => note !== '');
         return { reportWorthy: significantReportNotes.length > 0, changeNote: significantReportNotes.join(' '), commentTime: 72 };
@@ -109,11 +108,15 @@ export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promis
   fetchedMarkets.forEach(async (fetchedMarket) => {
     if (!fetchedMarket) return;
     const localMarket = localMarkets.find(q => q.url === fetchedMarket.url);
+
+    // Check if we're in isolated debug mode
+    if (microDebugging.length > 0 && !microDebugging.includes(fetchedMarket.url)) {console.log("Ignoring due to microdebugging"); return}
+    
     const { reportWorthy, changeNote, commentsNote, timeWindow } = await getChangeReport(fetchedMarket);
     const isUpdateTime = !!localMarket && isTimeForNewUpdate(localMarket, timeWindow);
-    const toSendReport = reportWorthy && SLACK_ON && isUpdateTime
+    const toSendReport = ((reportWorthy && isUpdateTime) || microDebugging.length > 0) && SLACK_ON
 
-    console.log(`Send report? ${toSendReport}! (reportWorthy ${reportWorthy}, SLACK_ON ${SLACK_ON}, isTimeForNewUpdate ${isUpdateTime})`, changeNote, fetchedMarket.url);
+    console.log(`Send report? ${toSendReport}! (reportWorthy ${reportWorthy}, SLACK_ON ${SLACK_ON}, microDebugging ${microDebugging.length > 0}, isTimeForNewUpdate ${isUpdateTime})`, changeNote, fetchedMarket.url);
 
     const channelId = isDeploy ? "C069HTSPS69" : "C06ACLAUTDE";
 

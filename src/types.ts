@@ -13,6 +13,12 @@ export interface Bet {
   probAfter: number;
 }
 
+export interface probChangesType {
+    day: number;
+    week: number;
+    month: number;
+  };
+
 export interface Answer {
   id: string;
   text: string;
@@ -22,11 +28,7 @@ export interface Answer {
   textFts: string;
   contractId: string;
   createdTime: number;
-  probChanges?: {
-    day: number;
-    week: number;
-    month: number;
-  };
+  probChanges?: probChangesType;
   subsidyPool: number;
   fsUpdatedTime: string;
   totalLiquidity: number;
@@ -149,11 +151,3 @@ export type Comment = {
   betOutcome?: string;
   editedTime?: number;
 };
-
-export interface BinaryMarketWithProbChanges extends BinaryMarket {
-  probChanges: {
-    day: number;
-    week: number;
-    month: number;
-  };
-}
