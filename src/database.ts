@@ -1,5 +1,5 @@
 import { Client } from 'pg';
-import {TrackedMarket} from './types';
+import { TrackedMarket } from './types';
 
 
 const client = new Client({
@@ -18,7 +18,7 @@ client.connect(err => {
   }
 });
 
-export const fetchTrackedQuestions = async (): Promise<TrackedMarket[]> => {
+export const fetchTrackedQuestions = async (): Promise<TrackedMarket[]|undefined> => {
   const queryText = 'SELECT _id, url, lastslacktime, lastslackhourwindow, tracked FROM markets WHERE tracked = true';
   try {
     const res = await client.query(queryText);
@@ -32,7 +32,6 @@ export const fetchTrackedQuestions = async (): Promise<TrackedMarket[]> => {
     return trackedMarkets;
   } catch (error) {
     console.error('Error fetching tracked questions', error);
-    throw error;
   }
 };
 
@@ -63,3 +62,13 @@ export const updateLocalMarket = async (id: string, lastslacktime: Date, lastsla
     console.error('Error updating local market in the database:', error);
   }
 };
+
+export const keepAwakeHack = async (): Promise<void> => {
+  const queryText = 'SELECT _id FROM markets WHERE tracked = true'
+  try {
+    await client.query(queryText);
+    console.log('Pinged db to stay awake.');
+  } catch (error) {
+    console.error('Error pinging db to stay awake:', error);
+  }
+}
