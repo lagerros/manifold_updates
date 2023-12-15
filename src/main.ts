@@ -4,6 +4,11 @@ import { fetchTrackedQuestions } from './database';
 import { checkAndSendUpdates } from './market_ops';
 import { sleep } from './util';
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Application specific logging, throwing an error, or other logic here
+});
+
 const loop = async () => {
   while (true) {
     try {

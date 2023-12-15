@@ -1,5 +1,5 @@
 import axios from "axios";
-import {updateLastSlackInfo} from "./database";
+import { updateLastSlackInfo } from "./database";
 
 export const sendSlackMessage = async ({
   url,
@@ -39,7 +39,7 @@ export const sendSlackMessage = async ({
         await updateLastSlackInfo(url, timeWindow, report);
       }
     }
-  } catch (error:any) {
+  } catch (error: any) {
     console.error(`Error occurred while sending Slack message: ${JSON.stringify(error.response.data)}`);
   }
 };
