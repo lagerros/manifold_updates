@@ -54,14 +54,14 @@ export const updateLastSlackInfo = async (url: string, timeWindow: number, last_
 export const updateNewTrackedSlackInfo = async (url: string): Promise<void> => {
   const queryText = `
     UPDATE markets
-    SET last_track_status_time = NOW()
+    SET last_track_status_slack_time = NOW()
     WHERE url = $1
   `;
   try {
     await client.query(queryText, [url]);
-    console.log('Updated last_track_status_time in the database.');
+    console.log('Updated last_track_status_slack_time in the database.');
   } catch (error) {
-    console.error('Error updating last_track_status_time in the database:', error);
+    console.error('Error updating last_track_status_slack_time in the database:', error);
   }
 };
 
