@@ -39,14 +39,14 @@ export const fetchTrackedQuestions = async (): Promise<TrackedMarket[]|undefined
 export const updateLastSlackInfo = async (url: string, timeWindow: number, last_report_sent: string): Promise<void> => {
   const queryText = `
     UPDATE markets
-    SET lastSlackTime = NOW(), lastSlackHourWindow = $1, last_report_sent = $3
+    SET lastslacktime = NOW(), lastslackhourwindow = $1, last_report_sent = $3
     WHERE url = $2
   `;
   try {
-    await client.query(queryText, [timeWindow, url, last_report_sent]);
-    console.log('Updated lastSlackTime and lastSlackHourWindow in the database.');
+    const result = await client.query(queryText, [timeWindow, url, last_report_sent]);
+    console.log('Updated lastslacktime and lastslackhourwindow in the database.', result);
   } catch (error) {
-    console.error('Error updating lastSlackTime and lastSlackHourWindow in the database:', error);
+    console.error('Error updating lastslacktime and lastslackhourwindow in the database:', error);
   }
 };
 

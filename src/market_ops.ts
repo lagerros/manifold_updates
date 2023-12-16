@@ -123,7 +123,6 @@ export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promis
       const response = await sendSlackMessage({ url: fetchedMarket.url, market_name: marketName, market_id: fetchedMarket.id, report: changeNote, comments: commentsNote, channelId: channelId });
       if (response?.status === 200 && timeWindow) {
         // Slack message sent successfully, update database
-        const isDeploy = process.env[`IS_DEPLOY`] === `true`;
         if (isDeploy) {
           await updateLastSlackInfo(fetchedMarket.url, timeWindow, changeNote);
         }
@@ -146,7 +145,6 @@ export const checkForNewAdditions = async (localMarkets: TrackedMarket[]): Promi
         const response = await sendSlackMessage({ url: lm.url, market_name: ":seedling: "+fm.question, market_id: fm.id, report: ":eyes: Now tracking this market ^", channelId: channelId });
         if (response?.status === 200) {
           console.log("Messaged slack about new market addition, ", fm.question)
-          const isDeploy = process.env[`IS_DEPLOY`] === `true`;
           if (isDeploy) {
             await updateNewTrackedSlackInfo(fm.url);
           }
