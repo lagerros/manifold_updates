@@ -19,7 +19,7 @@ client.connect(err => {
 });
 
 export const fetchTrackedQuestions = async (): Promise<TrackedMarket[]|undefined> => {
-  const queryText = 'SELECT _id, url, lastslacktime, lastslackhourwindow, tracked FROM markets WHERE tracked = true';
+  const queryText = 'SELECT _id, url, lastslacktime, lastslackhourwindow, tracked, last_track_status_slack_time FROM markets WHERE tracked = true';
   try {
     const res = await client.query(queryText);
     const trackedMarkets: TrackedMarket[] = res.rows.map(row => ({
@@ -27,7 +27,8 @@ export const fetchTrackedQuestions = async (): Promise<TrackedMarket[]|undefined
       url: row.url,
       lastslacktime: row.lastslacktime,
       lastslackhourwindow: row.lastslackhourwindow,
-      tracked: row.tracked
+      tracked: row.tracked,
+      last_track_status_slack_time: row.last_track_status_slack_time
     }));
     return trackedMarkets;
   } catch (error) {
@@ -46,6 +47,21 @@ export const updateLastSlackInfo = async (url: string, timeWindow: number, last_
     console.log('Updated lastSlackTime and lastSlackHourWindow in the database.');
   } catch (error) {
     console.error('Error updating lastSlackTime and lastSlackHourWindow in the database:', error);
+  }
+};
+
+
+export const updateNewTrackedSlackInfo = async (url: string): Promise<void> => {
+  const queryText = `
+    UPDATE markets
+    SET last_track_status_time = NOW()
+    WHERE url = $1
+  `;
+  try {
+    await client.query(queryText, [url]);
+    console.log('Updated last_track_status_time in the database.');
+  } catch (error) {
+    console.error('Error updating last_track_status_time in the database:', error);
   }
 };
 

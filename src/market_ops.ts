@@ -1,10 +1,10 @@
 import moment from "moment";
-import { updateLocalMarket } from "./database";
+import { updateLocalMarket, updateLastSlackInfo, updateNewTrackedSlackInfo } from "./database";
 import { getBets, getComments, getMarket } from "./manifold_api";
 import { sendSlackMessage } from "./slack";
 import { Market, TrackedMarket, Answer, probChangesType } from "./types";
 import { formatProb, getJsonUrl, isTimeForNewUpdate } from "./util";
-import { microDebugging, SLACK_ON, isDeploy, delta } from "./run_settings";
+import { microDebugging, SLACK_ON, isDeploy, delta, channelId } from "./run_settings";
 
 const getProbChange = async (contractId: string, t: number): Promise<number> => {
   const bets = await getBets(contractId);
@@ -87,7 +87,7 @@ const getChangeReport = async (market: Market): Promise<{ reportWorthy: boolean,
         const reportNotes = await Promise.all(m.answers.map(async answer => {
           const probChanges = answer.probChanges ?? { day: 0, week: 0, month: 0 }
           const { reportWorthy, changeNote } = await evaluateOutcomeType(answer, probChanges);
-          return reportWorthy ? `Answer "${answer.text}": ${changeNote}.\n` : '';
+          return reportWorthy ? `"${answer.text}": ${changeNote}.\n` : '';
         }));
         const significantReportNotes = reportNotes.filter(note => note !== '');
         return { reportWorthy: significantReportNotes.length > 0, changeNote: significantReportNotes.join(' '), commentTime: 72 };
@@ -116,13 +116,42 @@ export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promis
     const isUpdateTime = !!localMarket && isTimeForNewUpdate(localMarket, timeWindow);
     const toSendReport = ((reportWorthy && isUpdateTime) || microDebugging.length > 0) && SLACK_ON
 
-    console.log(`Send report? ${toSendReport}! (reportWorthy ${reportWorthy}, SLACK_ON ${SLACK_ON}, microDebugging ${microDebugging.length > 0}, isTimeForNewUpdate ${isUpdateTime})`, changeNote, fetchedMarket.url);
-
-    const channelId = isDeploy ? "C069HTSPS69" : "C06ACLAUTDE";
+    console.log(`Send report? ${toSendReport}! (reportWorthy ${reportWorthy}, SLACK_ON ${SLACK_ON}, microDebugging ${microDebugging.length > 0}, isTimeForNewUpdate ${isUpdateTime})`, changeNote, fetchedMarket.url, "\n");
 
     if (toSendReport) {
       const marketName = (fetchedMarket.outcomeType === "BINARY" ? `(${formatProb(fetchedMarket.probability)}%) ` : "") + fetchedMarket.question;
-      await sendSlackMessage({ url: fetchedMarket.url, market_name: marketName, market_id: fetchedMarket.id, report: changeNote, comments: commentsNote, channelId, timeWindow });
+      const response = await sendSlackMessage({ url: fetchedMarket.url, market_name: marketName, market_id: fetchedMarket.id, report: changeNote, comments: commentsNote, channelId: channelId });
+      if (response?.status === 200 && timeWindow) {
+        // Slack message sent successfully, update database
+        const isDeploy = process.env[`IS_DEPLOY`] === `true`;
+        if (isDeploy) {
+          await updateLastSlackInfo(fetchedMarket.url, timeWindow, changeNote);
+        }
+      }
     }
   });
 };
+
+export const checkForNewAdditions = async (localMarkets: TrackedMarket[]): Promise<void> => {
+  const fetchedMarkets = await Promise.all(localMarkets.map(m => getMarket(getJsonUrl(m.url))));
+  if (!fetchedMarkets) return
+  
+  fetchedMarkets.forEach(async (fm) => {
+    if (!fm) return;
+    const lm = localMarkets.find(q => q.url === fm.url);
+    if (!!lm && !lm.last_track_status_slack_time && (microDebugging.length === 0 || microDebugging.includes(fm.url))) {
+      console.log("new tracked market found", fm.url, "\n");
+
+      if (SLACK_ON) {
+        const response = await sendSlackMessage({ url: lm.url, market_name: ":seedling: "+fm.question, market_id: fm.id, report: ":eyes: Now tracking this market ^", channelId: channelId });
+        if (response?.status === 200) {
+          console.log("Messaged slack about new market addition, ", fm.question)
+          const isDeploy = process.env[`IS_DEPLOY`] === `true`;
+          if (isDeploy) {
+            await updateNewTrackedSlackInfo(fm.url);
+          }
+        }
+      }
+    }
+  })  
+}

@@ -1,5 +1,4 @@
 import axios from "axios";
-import { updateLastSlackInfo } from "./database";
 
 export const sendSlackMessage = async ({
   url,
@@ -8,16 +7,14 @@ export const sendSlackMessage = async ({
   report,
   channelId,
   comments,
-  timeWindow
 }: {
   url: string;
   market_name: string;
   market_id: string;
   report: string;
   channelId: string;
-  timeWindow: number;
   comments?: string;
-}): Promise<void> => {
+}): Promise<any> => {
   const payload = {
     channelId,
     url,
@@ -32,13 +29,7 @@ export const sendSlackMessage = async ({
         'Content-Type': 'application/json',
       },
     });
-    if (response.status === 200 && timeWindow) {
-      // Slack message sent successfully, update database
-      const isDeploy = process.env[`IS_DEPLOY`] === `true`;
-      if (isDeploy) {
-        await updateLastSlackInfo(url, timeWindow, report);
-      }
-    }
+    return response
   } catch (error: any) {
     console.error(`Error occurred while sending Slack message: ${JSON.stringify(error.response.data)}`);
   }

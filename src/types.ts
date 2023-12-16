@@ -5,6 +5,7 @@ export interface TrackedMarket {
   lastslackhourwindow?: number,
   tracked: boolean,
   last_report_sent?: string
+  last_track_status_slack_time?: Date,
 }
 
 export interface Bet {
