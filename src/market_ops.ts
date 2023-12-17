@@ -157,10 +157,7 @@ export const checkAndSendUpdates = async (localMarkets: LocalMarket[]): Promise<
 
   fetchedMarkets.forEach(async (fetchedMarket) => {
     const localMarket = getCorrespondingMarket(fetchedMarket, localMarkets);
-    if (!localMarket) {
-      console.log("No local market found for fetched market", fetchedMarket.url);
-      return;
-    }
+    if (!localMarket) { console.log("No local market found for fetched market", fetchedMarket.url); return }
    // const reportWorthy = await isReportWorthy(fetchedMarket);
     // TODO add some branching here?
     const { reportWorthy, changeNote, comments, num_comments, timeWindow } = await getMarketReport(fetchedMarket);
@@ -169,16 +166,14 @@ export const checkAndSendUpdates = async (localMarkets: LocalMarket[]): Promise<
 
     if (reportWorthy && isUpdateTime) {
       if (SLACK_ON) {
-        const market_name = getName(fetchedMarket);
-        const more_info = await getMoreInfo(fetchedMarket);
-        const slackResponse = await sendSlackMessage(
-          { url: fetchedMarket.url, 
-            market_name, 
+        const slackResponse = await sendSlackMessage({ 
+            url: fetchedMarket.url, 
+            market_name: getName(fetchedMarket), 
             market_id: fetchedMarket.id, 
             report: changeNote+`${num_comments > 0 ? `\n(${num_comments} comments)` : ""}`, 
             comments, 
             channelId, 
-            more_info 
+            more_info: await getMoreInfo(fetchedMarket)
           });  
         if (slackResponse?.status === 200 && isDeploy) {
           await updateDbLastSlackInfo(fetchedMarket.url, timeWindow, changeNote);
