@@ -1,5 +1,5 @@
 import { Client } from 'pg';
-import { TrackedMarket } from './types';
+import { LocalMarket } from './types';
 
 
 const client = new Client({
@@ -18,11 +18,11 @@ client.connect(err => {
   }
 });
 
-export const fetchTrackedQuestions = async (): Promise<TrackedMarket[]|undefined> => {
+export const fetchTrackedQuestions = async (): Promise<LocalMarket[]|undefined> => {
   const queryText = 'SELECT _id, url, lastslacktime, lastslackhourwindow, tracked, last_track_status_slack_time FROM markets WHERE tracked = true';
   try {
     const res = await client.query(queryText);
-    const trackedMarkets: TrackedMarket[] = res.rows.map(row => ({
+    const trackedMarkets: LocalMarket[] = res.rows.map(row => ({
       _id: row._id,
       url: row.url,
       lastslacktime: row.lastslacktime,

@@ -1,8 +1,10 @@
 import axios from "axios";
-import { Bet, Market, Comment, Position, Mover, MoveStats, AggregateMove } from "./types";
+import { Bet, FetchedMarket, Comment, Position, Mover, MoveStats, AggregateMove, LocalMarket } from "./types";
 import moment from "moment";
+import { getJsonUrl, ignoreDueToMicroDebugging } from "./util";
+import { isDeploy } from "./run_settings";
 
-export const getMarket = async (url: string): Promise<Market|undefined> => {
+export const getMarket = async (url: string): Promise<FetchedMarket|undefined> => {
   try {
     const response = await axios.get(url);
     return response.data;
@@ -11,7 +13,7 @@ export const getMarket = async (url: string): Promise<Market|undefined> => {
   }
 }
 
-export const getMarkets = async (): Promise<Market[]|undefined> => {
+export const getMarkets = async (): Promise<FetchedMarket[]|undefined> => {
   try {
     const response = await axios.get('https://manifold.markets/api/v0/markets?limit=10');
     return response.data;
@@ -169,3 +171,12 @@ export const getAggregateMoveData = async (marketId: string, t: number): Promise
     } 
   };
 }
+
+export const fetchCorrespondingMarkets = async (localMarkets: LocalMarket[]): Promise<FetchedMarket[]> => {
+  const markets = await Promise.all(
+    localMarkets
+      .filter(lm => isDeploy || !ignoreDueToMicroDebugging(lm.url))
+      .map(m => getMarket(getJsonUrl(m.url)))
+  );
+  return markets.filter((market): market is FetchedMarket => market !== undefined);
+};
