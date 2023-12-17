@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Bet, Market, Comment, Position } from "./types";
+import { Bet, Market, Comment, Position, Mover, MoveStats, AggregateMove } from "./types";
 import moment from "moment";
 
 export const getMarket = async (url: string): Promise<Market|undefined> => {
@@ -32,10 +32,19 @@ export const getComments = async (marketId: string, t: number): Promise<Comment[
   }
 };
 
-export const getBets = async (marketId: string): Promise<Bet[]|undefined> => {
+export const getBets = async (marketId: string, t?: number): Promise<Bet[]|undefined> => {
+  // TODO: handle yes/no outcomes
   try {
     const response = await axios.get(`https://manifold.markets/api/v0/bets?contractId=${marketId}`);
-    return response.data;
+    let bets: Bet[] = response.data;
+    
+    bets = bets.filter(bet => bet.isFilled && !bet.isCancelled);
+
+    if (!!t) {
+      bets = bets.filter(bet => moment().diff(moment(bet.createdTime), 'hours') <= t);
+    }
+  
+    return bets;
   } catch (error) {
     console.error(`Error occurred while getting bets: ${error}`);
   }
@@ -77,3 +86,86 @@ export const getUniquePositions = async (marketId: string): Promise<{ yesPositio
     console.error(`Error occurred while getting positions: ${error}`);
   }
 };
+
+const getPercentileEffect = (effectSize: number, movers: Mover[], totalMove: number): number => {
+  let cumulativeProbChange = 0;
+  let moversCount = 0;
+  for (const mover of movers) {
+    cumulativeProbChange += Math.abs(mover.probChangeTotal);
+    moversCount++;
+    if (cumulativeProbChange >= Math.abs(totalMove) * effectSize) {
+      break;
+    }
+  }
+  return moversCount / movers.length;
+};
+
+export const getAggregateMoveData = async (marketId: string, t: number): Promise<{move:AggregateMove, counterMove:AggregateMove}|undefined> => {
+  const bets = await getBets(marketId, t)
+  if (!bets || !bets.length) return;
+  const totalChange = bets[0].probAfter - bets[bets.length - 1].probBefore;
+  let totalMove = 0;
+  let totalCounterMove = 0;
+  
+  const userBets = bets.reduce((acc: Record<string, Mover>, bet) => {
+    const probChange = bet.probAfter - bet.probBefore;
+    if (!acc[bet.userId]) {
+      acc[bet.userId] = {
+        userId: bet.userId,
+        probChangeTotal: 0,
+        userName: bet?.userName,
+        numBets: 0,
+        probChanges: []
+      };
+    }
+    acc[bet.userId].probChangeTotal += probChange;
+    acc[bet.userId].numBets += 1;
+    acc[bet.userId].probChanges.push(probChange);
+    return acc;
+  }, {});
+  
+  const movers: Mover[] = [];
+  const counterMovers: Mover[] = [];
+
+  for (const userId in userBets) {
+    const mover = userBets[userId];
+    
+    if (Math.sign(mover.probChangeTotal) === Math.sign(totalChange)) {
+      movers.push(mover);
+      totalMove += mover.probChangeTotal;
+    } else {
+      counterMovers.push(mover);
+      totalCounterMove += mover.probChangeTotal;
+    }
+  }
+  
+  const getResponsibleShare = (mover: Mover, total: number) => total !== 0 ? mover.probChangeTotal / total : 0;
+  movers.forEach(getResponsibleShare);
+  counterMovers.forEach(getResponsibleShare);
+  
+  const byProbChange = (a: Mover, b: Mover) => Math.abs(b.probChangeTotal) - Math.abs(a.probChangeTotal);
+  movers.sort(byProbChange);
+  counterMovers.sort(byProbChange);
+
+  return { 
+    move: {
+      movers, 
+      stats: {
+        moveSize: totalMove,
+        effect20cohort: getPercentileEffect(0.2, movers, totalMove),
+        effect50cohort: getPercentileEffect(0.5, movers, totalMove),
+        effect80cohort: getPercentileEffect(0.8, movers, totalMove),
+        top3moversEffect: movers.slice(0, 3).reduce((sum, mover) => sum + mover.probChangeTotal, 0) / totalMove
+      }}, 
+    counterMove: {
+      movers: counterMovers, 
+      stats: {
+        moveSize: totalCounterMove,
+        effect20cohort: getPercentileEffect(0.2, counterMovers, totalCounterMove),
+        effect50cohort: getPercentileEffect(0.5, counterMovers, totalCounterMove),
+        effect80cohort: getPercentileEffect(0.8, counterMovers, totalCounterMove),
+        top3moversEffect: counterMovers.slice(0, 3).reduce((sum, mover) => sum + mover.probChangeTotal, 0) / totalCounterMove
+      }
+    } 
+  };
+}

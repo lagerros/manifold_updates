@@ -9,9 +9,40 @@ export interface TrackedMarket {
 }
 
 export interface Bet {
-  createdTime: string;
-  probBefore: number;
+  id: string;
+  fees: {
+    creatorFee: number;
+    platformFee: number;
+    liquidityFee: number;
+  };
+  fills?: {
+    amount: number, 
+    shares: number, 
+    timestamp: number,
+    matchedBetId: string|null,
+  }[];
+  isApi?: boolean;
+  amount: number;
+  isAnte: boolean;
+  shares: number;
+  userId: string;
+  outcome: 'YES' | 'NO';
+  isFilled?: boolean;
+  userName?: string;
+  expiresAt?: number;
+  limitProb?: number;
   probAfter: number;
+  contractId: string;
+  loanAmount: number;
+  probBefore: number;
+  visibility: 'public' | 'private';
+  createdTime: number;
+  isCancelled?: boolean;
+  isChallenge: boolean;
+  orderAmount?: number;
+  isRedemption?: boolean;
+  userUsername?: string;
+  userAvatarUrl?: string;
 }
 
 export interface Position {
@@ -159,7 +190,6 @@ export type IframeContent = {
 
 export type ContentItem = ParagraphContent | IframeContent;
 
-
 export type Comment = {
   id: string;
   isApi: boolean;
@@ -188,3 +218,25 @@ export type Comment = {
   betOutcome?: string;
   editedTime?: number;
 };
+
+export interface Mover {
+  userId: string;
+  probChangeTotal: number;
+  userName?: string;
+  numBets: number;
+  probChanges: number[];
+  responsibleShare?: number;
+}
+
+export interface MoveStats {
+  moveSize: number, 
+  effect20cohort: number, // proportion of traders responsible for 20% of the move
+  effect50cohort: number, // proportion of traders responsible for 50% of the move
+  effect80cohort: number, // proportion of traders responsible for 80% of the move
+  top3moversEffect: number // proportion effect of the top 3 movers
+}
+
+export interface AggregateMove {
+  movers: Mover[],
+  stats: MoveStats
+}

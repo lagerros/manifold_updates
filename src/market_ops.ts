@@ -1,6 +1,6 @@
 import moment from "moment";
 import { updateLocalMarket, updateLastSlackInfo, updateNewTrackedSlackInfo } from "./database";
-import { getBets, getComments, getMarket, getUniquePositions } from "./manifold_api";
+import { getBets, getComments, getMarket, getUniquePositions, getAggregateMoveData } from "./manifold_api";
 import { sendSlackMessage } from "./slack";
 import { Market, TrackedMarket, Answer, probChangesType } from "./types";
 import { formatProb, getJsonUrl, isTimeForNewUpdate } from "./util";
@@ -47,57 +47,71 @@ const getCommentsNote = async (marketId: string, t: number): Promise<{commentsNo
   return {commentsNote, num_comments: latestComments.length};
 };
 
+const periods: ('day' | 'week' | 'month')[] = ['day', 'week', 'month'];
+const periodHours = { day: 24, week: 24 * 7, month: 24 * 30 };
+
+const calculateChangeAndNote = (change: number, period: 'day' | 'week' | 'month'): { direction: string, changeNote: string, time: number } => {
+  if (Math.abs(change) <= delta) {
+    return { direction: '', changeNote: '', time: 72 }
+  } else {
+    const direction = change > 0 ? ':chart_with_upwards_trend: Up' : ':chart_with_downwards_trend: Down';
+    const changeNote = `${direction} ${formatProb(change)}% in the last ${period}`;
+    const time = periodHours[period];
+    return { direction, changeNote, time };
+  }
+};
+
+const getProbChangesForPeriods = async (contractId: string) => {
+  const probChanges = {
+    day: await getProbChange(contractId, 24),
+    week: await getProbChange(contractId, 24 * 7),
+    month: await getProbChange(contractId, 24 * 7 * 4),
+  };
+  return probChanges;
+};
+
+const evaluateOutcomeType = async (market: Market | Answer, probChanges:probChangesType) => {
+  
+  const changes = periods.map(period => ({ ...calculateChangeAndNote(probChanges[period], period), period }));
+  const significantChange = changes.find(change => change.changeNote !== '');
+  return significantChange ? { reportWorthy: true, changeNote: significantChange.changeNote, commentTime: significantChange.time } : { reportWorthy: false, changeNote: '', commentTime: 72 };
+};
+
+const evaluateMarket = async (m: Market) => {
+  switch (m.outcomeType) {
+    case 'BINARY':
+      const probChanges = await getProbChangesForPeriods(m.id);
+      return evaluateOutcomeType(m, probChanges);
+    case 'MULTIPLE_CHOICE':
+      const reportNotes = await Promise.all(m.answers.map(async answer => {
+        const probChanges = answer.probChanges ?? { day: 0, week: 0, month: 0 }
+        const { reportWorthy, changeNote } = await evaluateOutcomeType(answer, probChanges);
+        return reportWorthy ? `"${answer.text}": ${changeNote}.\n` : '';
+      }));
+      const significantReportNotes = reportNotes.filter(note => note !== '');
+      return { reportWorthy: significantReportNotes.length > 0, changeNote: significantReportNotes.join(' '), commentTime: 72 };
+    default:
+      return { reportWorthy: false, changeNote: '', commentTime: 72 };
+  }
+};
+
+const getMoversNote = async (marketId: string, t: number): Promise<{moversNote:string}> => {
+  const moversResult = await getAggregateMoveData(marketId, t);
+  if (!moversResult) {
+    console.log("No movers result");
+    return { moversNote: "" };
+  }
+  
+  // TODO
+
+  const { move, counterMove } = moversResult;
+  return { moversNote: "" }
+}
+
 const getChangeReport = async (market: Market): Promise<{ reportWorthy: boolean, changeNote: string, commentsNote: string, num_comments: number, timeWindow: number }> => {
-  const periods: ('day' | 'week' | 'month')[] = ['day', 'week', 'month'];
-  const periodHours = { day: 24, week: 24 * 7, month: 24 * 30 };
-
-  const calculateChangeAndNote = (change: number, period: 'day' | 'week' | 'month'): { direction: string, changeNote: string, time: number } => {
-    if (Math.abs(change) <= delta) {
-      return { direction: '', changeNote: '', time: 72 }
-    } else {
-      const direction = change > 0 ? ':chart_with_upwards_trend: Up' : ':chart_with_downwards_trend: Down';
-      const changeNote = `${direction} ${formatProb(change)}% in the last ${period}`;
-      const time = periodHours[period];
-      return { direction, changeNote, time };
-    }
-  };
-
-  const getProbChangesForPeriods = async (contractId: string) => {
-    const probChanges = {
-      day: await getProbChange(contractId, 24),
-      week: await getProbChange(contractId, 24 * 7),
-      month: await getProbChange(contractId, 24 * 7 * 4),
-    };
-    return probChanges;
-  };
-
-  const evaluateOutcomeType = async (market: Market | Answer, probChanges:probChangesType) => {
-    
-    const changes = periods.map(period => ({ ...calculateChangeAndNote(probChanges[period], period), period }));
-    const significantChange = changes.find(change => change.changeNote !== '');
-    return significantChange ? { reportWorthy: true, changeNote: significantChange.changeNote, commentTime: significantChange.time } : { reportWorthy: false, changeNote: '', commentTime: 72 };
-  };
-
-  const evaluateMarket = async (m: Market) => {
-    switch (m.outcomeType) {
-      case 'BINARY':
-        const probChanges = await getProbChangesForPeriods(m.id);
-        return evaluateOutcomeType(m, probChanges);
-      case 'MULTIPLE_CHOICE':
-        const reportNotes = await Promise.all(m.answers.map(async answer => {
-          const probChanges = answer.probChanges ?? { day: 0, week: 0, month: 0 }
-          const { reportWorthy, changeNote } = await evaluateOutcomeType(answer, probChanges);
-          return reportWorthy ? `"${answer.text}": ${changeNote}.\n` : '';
-        }));
-        const significantReportNotes = reportNotes.filter(note => note !== '');
-        return { reportWorthy: significantReportNotes.length > 0, changeNote: significantReportNotes.join(' '), commentTime: 72 };
-      default:
-        return { reportWorthy: false, changeNote: '', commentTime: 72 };
-    }
-  };
-
   const { reportWorthy, changeNote, commentTime } = await evaluateMarket(market);
-  const { commentsNote, num_comments} = reportWorthy ? await getCommentsNote(market.id, commentTime) : {commentsNote:'', num_comments:0};
+  const { commentsNote, num_comments } = reportWorthy ? await getCommentsNote(market.id, commentTime) : {commentsNote:'', num_comments:0};
+  const { moversNote } = true ? await getMoversNote(market.id, commentTime) : { moversNote: '' };
   return { reportWorthy, changeNote, commentsNote, num_comments, timeWindow: 24 };
 };
 
@@ -121,16 +135,18 @@ const getMoreInfo = async (market: Market): Promise<string> => {
   )
 }
 
+const ignoreDueToMicroDebugging = (url: string): boolean => {
+  return microDebugging.length > 0 && !microDebugging.includes(url);
+}
+
 export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promise<void> => {
-  const fetchedMarkets = await Promise.all(localMarkets.map(m => getMarket(getJsonUrl(m.url))));
+  const fetchedMarkets = await Promise.all(localMarkets.filter(lm => isDeploy || !ignoreDueToMicroDebugging(lm.url) ).map(m => getMarket(getJsonUrl(m.url))));
   if (!fetchedMarkets) return
+  console.log(fetchedMarkets)
 
   fetchedMarkets.forEach(async (fetchedMarket) => {
     if (!fetchedMarket) return;
     const localMarket = localMarkets.find(q => q.url === fetchedMarket.url);
-
-    // Check if we're in isolated debug mode
-    if (microDebugging.length > 0 && !microDebugging.includes(fetchedMarket.url)) {console.log("Ignoring due to microdebugging"); return}
     
     const { reportWorthy, changeNote, commentsNote, num_comments, timeWindow } = await getChangeReport(fetchedMarket);
     const isUpdateTime = !!localMarket && isTimeForNewUpdate(localMarket, timeWindow);
