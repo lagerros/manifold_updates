@@ -1,4 +1,4 @@
-export const microDebugging:string[] = ["https://manifold.markets/MichaelWheatley/who-first-builds-an-artificial-gene"] 
+export const microDebugging:string[] = [] 
 export const SLACK_ON = true;
 export const isDeploy = process.env[`IS_DEPLOY`] === `true`;
 export const delta = 0.1 // The threshold we use for when to report a change

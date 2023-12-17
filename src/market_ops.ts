@@ -134,7 +134,7 @@ export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promis
     
     const { reportWorthy, changeNote, commentsNote, num_comments, timeWindow } = await getChangeReport(fetchedMarket);
     const isUpdateTime = !!localMarket && isTimeForNewUpdate(localMarket, timeWindow);
-    const toSendReport = ((reportWorthy && isUpdateTime) || microDebugging.length > 0) && SLACK_ON
+    const toSendReport = ((reportWorthy && isUpdateTime) || (!isDeploy && microDebugging.length > 0)) && SLACK_ON
 
     console.log(`Send report? ${toSendReport}! (reportWorthy ${reportWorthy}, SLACK_ON ${SLACK_ON}, microDebugging ${microDebugging.length > 0}, isTimeForNewUpdate ${isUpdateTime})`, changeNote, fetchedMarket.url, "\n");
 
