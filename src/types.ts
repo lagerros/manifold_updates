@@ -1,4 +1,4 @@
-export interface TrackedMarket {
+export interface LocalMarket {
   _id: string, 
   url: string, 
   lastslacktime?: Date,
@@ -170,7 +170,7 @@ export interface BinaryMarket {
   textDescription: string;
 }
 
-export type Market = MultipleChoiceMarket | BinaryMarket;
+export type FetchedMarket = MultipleChoiceMarket | BinaryMarket;
 
 export type ParagraphContent = {
   type: "paragraph";
@@ -239,4 +239,16 @@ export interface MoveStats {
 export interface AggregateMove {
   movers: Mover[],
   stats: MoveStats
+}
+
+export interface ChangeNote {
+  reportWorthy: boolean;
+  changeNote: string;
+  timeWindow: number;
+}
+
+export interface ChangeReport {
+  day: ChangeNote;
+  week: ChangeNote;
+  month: ChangeNote;
 }
