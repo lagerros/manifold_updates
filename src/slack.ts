@@ -7,6 +7,7 @@ export const sendSlackMessage = async ({
   report,
   channelId,
   comments,
+  more_info
 }: {
   url: string;
   market_name: string;
@@ -14,6 +15,7 @@ export const sendSlackMessage = async ({
   report: string;
   channelId: string;
   comments?: string;
+  more_info?: string;
 }): Promise<any> => {
   const payload = {
     channelId,
@@ -22,6 +24,7 @@ export const sendSlackMessage = async ({
     comments,
     market_id,
     report,
+    more_info
   };
   try {
     const response = await axios.post('https://hooks.slack.com/triggers/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', payload, {

@@ -14,6 +14,42 @@ export interface Bet {
   probAfter: number;
 }
 
+export interface Position {
+  id: string;
+  fees: {
+    creatorFee: number;
+    platformFee: number;
+    liquidityFee: number;
+  };
+  fills?: {
+    amount: number, 
+    shares: number, 
+    timestamp: number,
+    matchedBetId: string|null,
+  }[]; 
+  isApi?: boolean;
+  amount: number;
+  isAnte: boolean;
+  shares: number;
+  userId: string;
+  outcome: 'YES' | 'NO';
+  isFilled?: boolean;
+  userName?: string;
+  probAfter: number;
+  contractId: string;
+  loanAmount: number;
+  probBefore: number;
+  visibility: 'public' | 'private'; // Assuming visibility is either 'public' or 'private' based on common usage
+  createdTime: number;
+  isCancelled?: boolean;
+  isChallenge: boolean;
+  orderAmount?: number;
+  isRedemption?: boolean;
+  userUsername?: string;
+  userAvatarUrl?: string;
+}
+
+
 export interface probChangesType {
     day: number;
     week: number;

@@ -1,6 +1,6 @@
 import moment from "moment";
 import { updateLocalMarket, updateLastSlackInfo, updateNewTrackedSlackInfo } from "./database";
-import { getBets, getComments, getMarket } from "./manifold_api";
+import { getBets, getComments, getMarket, getUniquePositions } from "./manifold_api";
 import { sendSlackMessage } from "./slack";
 import { Market, TrackedMarket, Answer, probChangesType } from "./types";
 import { formatProb, getJsonUrl, isTimeForNewUpdate } from "./util";
@@ -20,13 +20,13 @@ const getProbChange = async (contractId: string, t: number): Promise<number> => 
 };
 
 
-const getCommentsNote = async (marketId: string, t: number): Promise<string> => {
+const getCommentsNote = async (marketId: string, t: number): Promise<{commentsNote:string, num_comments:number}> => {
   const comments = await getComments(marketId, t);
-  if (!comments) { return "" }
+  if (!comments) { return {commentsNote:"", num_comments:0} }
   const filteredComments = comments.filter(comment => !comment.replyToCommentId);
   const latestComments = filteredComments.slice(0, 3);
 
-  const report = latestComments.map(comment => {
+  const commentsNote = latestComments.map(comment => {
     const commentTexts = comment?.content?.content.map(contentItem => {
       if (contentItem.type === 'paragraph' && contentItem.content) {
         return contentItem?.content.map(textItem => textItem.text).join(' ');
@@ -44,10 +44,10 @@ const getCommentsNote = async (marketId: string, t: number): Promise<string> => 
     }
   }).join('\n');
 
-  return report;
+  return {commentsNote, num_comments: latestComments.length};
 };
 
-const getChangeReport = async (market: Market): Promise<{ reportWorthy: boolean, changeNote: string, commentsNote: string, timeWindow: number }> => {
+const getChangeReport = async (market: Market): Promise<{ reportWorthy: boolean, changeNote: string, commentsNote: string, num_comments: number, timeWindow: number }> => {
   const periods: ('day' | 'week' | 'month')[] = ['day', 'week', 'month'];
   const periodHours = { day: 24, week: 24 * 7, month: 24 * 30 };
 
@@ -97,9 +97,29 @@ const getChangeReport = async (market: Market): Promise<{ reportWorthy: boolean,
   };
 
   const { reportWorthy, changeNote, commentTime } = await evaluateMarket(market);
-  const commentsNote = reportWorthy ? await getCommentsNote(market.id, commentTime) : '';
-  return { reportWorthy, changeNote, commentsNote, timeWindow: 24 };
+  const { commentsNote, num_comments} = reportWorthy ? await getCommentsNote(market.id, commentTime) : {commentsNote:'', num_comments:0};
+  return { reportWorthy, changeNote, commentsNote, num_comments, timeWindow: 24 };
 };
+
+const getMoreInfo = async (market: Market): Promise<string> => {
+  const r = await getUniquePositions(market.id)
+  let positionNote = '';
+  if (r) {
+    positionNote = (
+    `:warning: (position data might be somewhat inaccurate)\n`+
+    `:large_green_square: YES positions\n`+
+    `${r.yesPositions.slice(0, 3).map(p => `--- ${p.userName}: :heavy_dollar_sign:${Math.round(p.shares)}`).join('\n')}\n`+
+    `:large_red_square: NO positions:\n`+
+    `${r.noPositions.slice(0, 3).map(p => `--- ${p.userName}: :heavy_dollar_sign:${Math.round(p.shares)}`).join('\n')}\n`
+    )
+  }
+  return (
+    `Total liquidity: :heavy_dollar_sign:${market.totalLiquidity}\n`+
+    `Volume: :heavy_dollar_sign:${Math.round(market.volume24Hours)} (24h), :heavy_dollar_sign:${Math.round(market.volume)} (total)\n`+
+    `Unique traders: ${market.uniqueBettorCount}\n\n`+
+    `${positionNote}`
+  )
+}
 
 export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promise<void> => {
   const fetchedMarkets = await Promise.all(localMarkets.map(m => getMarket(getJsonUrl(m.url))));
@@ -112,7 +132,7 @@ export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promis
     // Check if we're in isolated debug mode
     if (microDebugging.length > 0 && !microDebugging.includes(fetchedMarket.url)) {console.log("Ignoring due to microdebugging"); return}
     
-    const { reportWorthy, changeNote, commentsNote, timeWindow } = await getChangeReport(fetchedMarket);
+    const { reportWorthy, changeNote, commentsNote, num_comments, timeWindow } = await getChangeReport(fetchedMarket);
     const isUpdateTime = !!localMarket && isTimeForNewUpdate(localMarket, timeWindow);
     const toSendReport = ((reportWorthy && isUpdateTime) || microDebugging.length > 0) && SLACK_ON
 
@@ -120,7 +140,8 @@ export const checkAndSendUpdates = async (localMarkets: TrackedMarket[]): Promis
 
     if (toSendReport) {
       const marketName = (fetchedMarket.outcomeType === "BINARY" ? `(${formatProb(fetchedMarket.probability)}%) ` : "") + fetchedMarket.question;
-      const response = await sendSlackMessage({ url: fetchedMarket.url, market_name: marketName, market_id: fetchedMarket.id, report: changeNote, comments: commentsNote, channelId: channelId });
+      const more_info = await getMoreInfo(fetchedMarket);
+      const response = await sendSlackMessage({ url: fetchedMarket.url, market_name: marketName, market_id: fetchedMarket.id, report: changeNote+`${num_comments > 0 ? `\n(${num_comments} comments)` : ""}`, comments: commentsNote, channelId: channelId, more_info });
       if (response?.status === 200 && timeWindow) {
         // Slack message sent successfully, update database
         if (isDeploy) {
