@@ -1,4 +1,4 @@
-import {microDebugging} from "./run_settings";
+import { microDebugging, isDeploy } from "./run_settings";
 import { LocalMarket, FetchedMarket } from "./types";
 
 export const getJsonUrl = (url: string): string => {
@@ -26,7 +26,7 @@ export const useMicrodebugging = (url:string):boolean => {
   return microDebugging.length > 0
 }
 
-export const ignoreDueToMicroDebugging = (url: string): boolean => {
-  return useMicrodebugging(url) && !microDebugging.includes(url);
+export const ignoreDueToMicroDebugging = (url: string): boolean => { // TODO: fix, this logic is getting confusing
+  return useMicrodebugging(url) && !microDebugging.includes(url) && !isDeploy;
 }
 
