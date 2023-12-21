@@ -111,17 +111,16 @@ const getChangeReport = async (market: FetchedMarket): Promise<ChangeReport> => 
 };
 
 const getMoveEmoji = (moveSize: number): string => {
-  if (moveSize > 0) return ':woman_woman_girl:';
+  if (moveSize > 0) return ':woman-woman-girl:';
   if (moveSize === 0) return ':family:';
-  if (moveSize < 0) return ':man_man_boy:';
+  if (moveSize < 0) return ':man-man-boy:';
   return ':red_circle:';
 }
 
 const getLongMoveNote = (move:AggregateMove): string => {
   return (
-    `${getMoveEmoji(move.stats.moveSize)} ${move.movers.length} Countermovers\n
-    Top 3 traders effect: ${formatProb(move.stats.top3moversEffect)}\n
-    Effect percentile: 20th ${formatProb(move.stats.effect20cohort)}, 50th ${formatProb(move.stats.effect50cohort)}, 80th ${formatProb(move.stats.effect80cohort)}\n
+    `Top 3 traders effect: ${formatProb(move.stats.top3moversEffect)}\n
+    Effect percentile: 20th: ${formatProb(move.stats.effect20cohort)}, 50th: ${formatProb(move.stats.effect50cohort)}, 80th: ${formatProb(move.stats.effect80cohort)}\n
     ${move.movers.slice(0, 3).map(m => `--- ${m.userName}: ${formatProb(m.probChangeTotal)} (${m.numBets} bets)`).join('\n')}\n
   `)
 }
@@ -136,7 +135,11 @@ const getMoversNote = async (marketId: string, t: number): Promise<{briefMoversN
   // TODO
   const { move, counterMove } = moversResult;
   
-  const longMoversNote = getLongMoveNote(move)+getLongMoveNote(counterMove);
+  const longMoversNote = 
+    `\n${getMoveEmoji(move.stats.moveSize)} ${move.movers.length} Movers\n` +
+    getLongMoveNote(move) +
+    `${getMoveEmoji(move.stats.moveSize)} ${move.movers.length} Countermovers\n` +
+    getLongMoveNote(counterMove);
   
   return {briefMoversNote:"", longMoversNote} 
 }
