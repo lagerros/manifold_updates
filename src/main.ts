@@ -2,9 +2,7 @@ import 'dotenv/config';
 
 import { fetchTrackedQuestions, keepAwakeHack } from './database';
 import { checkAndSendUpdates, checkForNewAdditions } from './market_ops';
-
-const keepAwakeInterval = 4 * 60 * 1000; // 4 minutes
-const loopInterval = 60 * 60 * 1000; // 1 hour
+import { systemHealthUpdate } from './system_health';
 
 const hourlyTask = async () => {
   try {
@@ -18,7 +16,9 @@ const hourlyTask = async () => {
   }
 };
 
-setInterval(keepAwakeHack, keepAwakeInterval);
-setInterval(hourlyTask, loopInterval);
+setInterval(keepAwakeHack, 4 * 60 * 1000); // 4 minutes
+setInterval(hourlyTask, 60 * 60 * 1000); // 1 hour
+setInterval(systemHealthUpdate, 24 * 60 * 60 * 1000); // 1 day
 
+systemHealthUpdate()
 hourlyTask();
