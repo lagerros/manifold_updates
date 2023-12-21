@@ -35,7 +35,7 @@ export const getComments = async (marketId: string, t: number): Promise<Comment[
 };
 
 export const getBets = async (marketId: string, t?: number): Promise<Bet[]|undefined> => {
-  // TODO: handle yes/no outcomes
+  // TODO: handle yes or no outcomes
   try {
     const response = await axios.get(`https://manifold.markets/api/v0/bets?contractId=${marketId}`);
     let bets: Bet[] = response.data;

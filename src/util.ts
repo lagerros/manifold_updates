@@ -22,6 +22,11 @@ export const getCorrespondingMarket = (market: FetchedMarket, localMarkets: Loca
   return localMarkets.find(q => q.url === market.url);
 }
 
-export const ignoreDueToMicroDebugging = (url: string): boolean => {
-  return microDebugging.length > 0 && !microDebugging.includes(url);
+export const useMicrodebugging = (url:string):boolean => {
+  return microDebugging.length > 0
 }
+
+export const ignoreDueToMicroDebugging = (url: string): boolean => {
+  return useMicrodebugging(url) && !microDebugging.includes(url);
+}
+

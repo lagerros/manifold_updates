@@ -61,7 +61,7 @@ const getProbChangesForPeriods = async (contractId: string) => {
 
 const formatNote = (change: number, period: 'day' | 'week' | 'month'): string => {
   if (change === 0) return ''
-  const directionNote = change > 0 ? ':chart_with_upwards_trend: Up' : ':chart_with_downwards_trend: Down';
+  const directionNote = change > 0 ? ' :chart_with_upwards_trend: Up' : ' :chart_with_downwards_trend: Down';
   return `${directionNote} ${formatProb(change)}% in the last ${period}`;
 };
 
@@ -72,17 +72,20 @@ const checkSignificant = (change: number): boolean => {
   return Math.abs(change) > delta;
 }
 
-const getChangeNote = (change:number, period:'day' | 'week' | 'month'): ChangeNote => ({
+const getChangeNote = (change:number, period:'day' | 'week' | 'month', prefix:string): ChangeNote => ({
   reportWorthy: checkSignificant(change),
-  changeNote: formatNote(change, period),
+  changeNote: prefix+formatNote(change, period),
   timeWindow: periodHours[period]
 })
 
-const changeReportObj = (probChanges:probChangesType) => ({
-  day: getChangeNote(probChanges['day'], 'day'),
-  week: getChangeNote(probChanges['week'], 'week'),
-  month: getChangeNote(probChanges['month'], 'month')
-})
+const changeReportObj = (probChanges:probChangesType, prefix?:string) => {
+  const pre = prefix ?? ''
+  return ({
+    day: getChangeNote(probChanges['day'], 'day', pre),
+    week: getChangeNote(probChanges['week'], 'week', pre),
+    month: getChangeNote(probChanges['month'], 'month', pre)
+  })
+}
   
 const zeroProbChanges = { day: 0, week: 0, month: 0 };
 
@@ -94,14 +97,14 @@ const getChangeReport = async (market: FetchedMarket): Promise<ChangeReport> => 
     case 'MULTIPLE_CHOICE':
       const reportNotes = await Promise.all(market.answers.map(async answer => {
         const probChanges = answer.probChanges ?? zeroProbChanges;
-        return changeReportObj(probChanges);
+        return changeReportObj(probChanges, answer.text+": ");
       }));
         
       return reportNotes.reduce((acc: ChangeReport, curr) => {
         return {
-          day: !curr.day.reportWorthy ? acc.day : { ...acc.day, changeNote: acc.day.changeNote + curr.day.changeNote + '/n', reportWorthy: true },
-          week: !curr.week.reportWorthy ? acc.week : { ...acc.week, changeNote: acc.week.changeNote + curr.week.changeNote + '/n', reportWorthy: true },
-          month: !curr.month.reportWorthy ? acc.month : { ...acc.month, changeNote: acc.month.changeNote + curr.month.changeNote + '/n', reportWorthy: true }
+          day: !curr.day.reportWorthy ? acc.day : { ...acc.day, changeNote: acc.day.changeNote + curr.day.changeNote + '\n', reportWorthy: true },
+          week: !curr.week.reportWorthy ? acc.week : { ...acc.week, changeNote: acc.week.changeNote + curr.week.changeNote + '\n', reportWorthy: true },
+          month: !curr.month.reportWorthy ? acc.month : { ...acc.month, changeNote: acc.month.changeNote + curr.month.changeNote + '\n', reportWorthy: true }
         };
       }, changeReportObj(zeroProbChanges));
   }
@@ -164,7 +167,7 @@ export const checkAndSendUpdates = async (localMarkets: LocalMarket[]): Promise<
     const isUpdateTime = isTimeForNewUpdate(localMarket, timeWindow);
     logReportStatus(reportWorthy, isUpdateTime, changeNote, fetchedMarket.url);
 
-    if (reportWorthy && isUpdateTime) {
+    if ((reportWorthy && isUpdateTime) || !ignoreDueToMicroDebugging(fetchedMarket.url)) {
       if (SLACK_ON) {
         const slackResponse = await sendSlackMessage({ 
             url: fetchedMarket.url, 
