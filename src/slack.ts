@@ -27,7 +27,24 @@ export const sendSlackMessage = async ({
     more_info
   };
   try {
-    const response = await axios.post('https://hooks.slack.com/triggers/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', payload, {
+    const webhook = process.env['SLACK_MAIN_WEBHOOK']
+    if (webhook) {
+      const response = await axios.post(webhook, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      return response
+    }
+  } catch (error: any) {
+    console.error(`Error occurred while sending Slack message: ${JSON.stringify(error.response.data)}`);
+  }
+};
+
+// TODO: make this the main slack function
+export const sendDevSlackUpdate = async (webhook:string, payload:{message:string, channelId:string}) => {
+  try {
+    const response = await axios.post(webhook, payload, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -36,4 +53,4 @@ export const sendSlackMessage = async ({
   } catch (error: any) {
     console.error(`Error occurred while sending Slack message: ${JSON.stringify(error.response.data)}`);
   }
-};
+}
