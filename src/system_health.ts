@@ -25,6 +25,6 @@ export const systemHealthUpdate = async (): Promise<void> => {
 
 export const systemStartUpdate = async (): Promise<void> => {
   if (devWebhook) {
-    await sendDevSlackUpdate(devWebhook, {channelId: devChannelId, message: `Bot restarted (${isDeploy ? " :tophat: production" : " :computer: dev"}). :white_check_mark:`})
+    await sendDevSlackUpdate(devWebhook, {channelId: devChannelId, message: `Bot restarted (${isDeploy ? " :tophat: production" : " :computer: dev"})`})
   }
 }
