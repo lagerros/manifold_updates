@@ -2,7 +2,7 @@ import moment from "moment";
 import { updateLocalMarket, updateLastSlackInfo as updateDbLastSlackInfo, updateNewTrackedSlackInfo } from "./database";
 import { getBets, getComments, getMarket, getUniquePositions, getAggregateMoveData, fetchCorrespondingMarkets } from "./manifold_api";
 import { sendSlackMessage } from "./slack";
-import { FetchedMarket, LocalMarket, Answer, probChangesType, ChangeNote, ChangeReport } from "./types";
+import { FetchedMarket, LocalMarket, Answer, probChangesType, ChangeNote, ChangeReport, AggregateMove } from "./types";
 import { formatProb, getCorrespondingMarket, getJsonUrl, getName, ignoreDueToMicroDebugging, isTimeForNewUpdate } from "./util";
 import { microDebugging, SLACK_ON, isDeploy, delta, channelId } from "./run_settings";
 import {logReportStatus} from "./logging";
@@ -62,7 +62,7 @@ const getProbChangesForPeriods = async (contractId: string) => {
 const formatNote = (change: number, period: 'day' | 'week' | 'month'): string => {
   if (change === 0) return ''
   const directionNote = change > 0 ? ':chart_with_upwards_trend: Up' : ':chart_with_downwards_trend: Down';
-  return `${directionNote} ${formatProb(change)}% in the last ${period}`;
+  return `${directionNote} ${formatProb(change)} in the last ${period}`;
 };
 
 const periods: ('day' | 'week' | 'month')[] = ['day', 'week', 'month'];
@@ -107,29 +107,48 @@ const getChangeReport = async (market: FetchedMarket): Promise<ChangeReport> => 
   }
 };
 
-const getMoversNote = async (marketId: string, t: number): Promise<{moversNote:string}> => {
-  if (t === 0) return {moversNote:""} 
+const getMoveEmoji = (moveSize: number): string => {
+  if (moveSize > 0) return ':woman_woman_girl:';
+  if (moveSize === 0) return ':family:';
+  if (moveSize < 0) return ':man_man_boy:';
+  return ':red_circle:';
+}
+
+const getLongMoveNote = (move:AggregateMove): string => {
+  return (
+    `${getMoveEmoji(move.stats.moveSize)} ${move.movers.length} Countermovers\n
+    Top 3 traders effect: ${formatProb(move.stats.top3moversEffect)}\n
+    Effect percentile: 20th ${formatProb(move.stats.effect20cohort)}, 50th ${formatProb(move.stats.effect50cohort)}, 80th ${formatProb(move.stats.effect80cohort)}\n
+    ${move.movers.slice(0, 3).map(m => `--- ${m.userName}: ${formatProb(m.probChangeTotal)} (${m.numBets} bets)`).join('\n')}\n
+  `)
+}
+
+const getMoversNote = async (marketId: string, t: number): Promise<{briefMoversNote:string, longMoversNote:string}> => {
+  if (t === 0) return {briefMoversNote:"", longMoversNote:""} 
   const moversResult = await getAggregateMoveData(marketId, t);
   if (!moversResult) {
     console.log("No movers result");
-    return { moversNote: "" };
+    return {briefMoversNote:"", longMoversNote:""};
   }
   // TODO
   const { move, counterMove } = moversResult;
-  return { moversNote: "" }
+  
+  const longMoversNote = getLongMoveNote(move)+getLongMoveNote(counterMove);
+  
+  return {briefMoversNote:"", longMoversNote} 
 }
 
-const getMarketReport = async (market: FetchedMarket): Promise<{ reportWorthy: boolean, changeNote: string, comments: string, num_comments: number, timeWindow: number }> => {
+const getMarketReport = async (market: FetchedMarket): Promise<{ reportWorthy: boolean, changeNote: string, comments: string, num_comments: number, longMoversNote: string, timeWindow: number }> => {
   const allPeriodReports = await getChangeReport(market);
   const earliest = allPeriodReports.day.reportWorthy ? "day" :
                                allPeriodReports.week.reportWorthy ? "week" :
                                allPeriodReports.month.reportWorthy ? "month" : 
                                null;
-  if (!earliest) return { reportWorthy: false, changeNote: "", comments: "", num_comments: 0, timeWindow: 0 }; // avoiding calculating some queries if not reportWorthy
+  if (!earliest) return { reportWorthy: false, changeNote: "", comments: "", num_comments: 0, longMoversNote: "", timeWindow: 0 }; // avoiding calculating some queries if not reportWorthy
   const { reportWorthy, changeNote, timeWindow } = allPeriodReports[earliest]
   const { commentsNote, num_comments } = await getCommentsNote(market.id, timeWindow) 
-  const { moversNote } = await getMoversNote(market.id, timeWindow) 
-  return { reportWorthy, changeNote, comments: commentsNote, num_comments, timeWindow };
+  const { briefMoversNote, longMoversNote } = await getMoversNote(market.id, timeWindow) 
+  return { reportWorthy, changeNote, comments: commentsNote, num_comments, longMoversNote, timeWindow };
 };
 
 const getMoreInfo = async (market: FetchedMarket): Promise<string> => {
@@ -153,14 +172,9 @@ const getMoreInfo = async (market: FetchedMarket): Promise<string> => {
 }
 
 export const checkAndSendUpdates = async (localMarkets: LocalMarket[]): Promise<void> => {
-  const fetchedMarkets = await fetchCorrespondingMarkets(localMarkets);
-
-  fetchedMarkets.forEach(async (fetchedMarket) => {
-    const localMarket = getCorrespondingMarket(fetchedMarket, localMarkets);
-    if (!localMarket) { console.log("No local market found for fetched market", fetchedMarket.url); return }
-   // const reportWorthy = await isReportWorthy(fetchedMarket);
-    // TODO add some branching here?
-    const { reportWorthy, changeNote, comments, num_comments, timeWindow } = await getMarketReport(fetchedMarket);
+  const pairs = await fetchCorrespondingMarkets(localMarkets);
+  pairs.forEach(async ({fetchedMarket, localMarket}) => {
+    const { reportWorthy, changeNote, comments, num_comments, longMoversNote, timeWindow } = await getMarketReport(fetchedMarket);
     const isUpdateTime = isTimeForNewUpdate(localMarket, timeWindow);
     logReportStatus(reportWorthy, isUpdateTime, changeNote, fetchedMarket.url);
 
@@ -173,7 +187,7 @@ export const checkAndSendUpdates = async (localMarkets: LocalMarket[]): Promise<
             report: changeNote+`${num_comments > 0 ? `\n(${num_comments} comments)` : ""}`, 
             comments, 
             channelId, 
-            more_info: await getMoreInfo(fetchedMarket)
+            more_info: (await getMoreInfo(fetchedMarket)) + longMoversNote
           });  
         if (slackResponse?.status === 200 && isDeploy) {
           await updateDbLastSlackInfo(fetchedMarket.url, timeWindow, changeNote);
@@ -185,29 +199,28 @@ export const checkAndSendUpdates = async (localMarkets: LocalMarket[]): Promise<
 
 
 export const checkForNewAdditions = async (localMarkets: LocalMarket[]): Promise<void> => {
-  const fetchedMarkets = await fetchCorrespondingMarkets(localMarkets);
+  const pairs = await fetchCorrespondingMarkets(localMarkets);
   
-  fetchedMarkets.forEach(async (fm) => {
-    const lm = getCorrespondingMarket(fm, localMarkets);
-    if (!lm) {
-      console.log("No local market found for fetched market", fm.url);
+  pairs.forEach(async ({fetchedMarket, localMarket}) => {
+    if (!localMarket) {
+      console.log("No local market found for fetched market", fetchedMarket.url);
       return;
     }
-    if (!lm.last_track_status_slack_time && !ignoreDueToMicroDebugging(fm.url)) {
-      console.log("new tracked market found", fm.url, "\n");
+    if (!localMarket.last_track_status_slack_time && !ignoreDueToMicroDebugging(fetchedMarket.url)) {
+      console.log("new tracked market found", fetchedMarket.url, "\n");
 
       if (SLACK_ON) {
         const response = await sendSlackMessage({ 
-          url: lm.url, 
-          market_name: ":seedling: "+fm.question, 
-          market_id: fm.id, 
+          url: localMarket.url, 
+          market_name: ":seedling: "+fetchedMarket.question, 
+          market_id: fetchedMarket.id, 
           report: ":eyes: Now tracking this market ^", 
           channelId 
         });
         if (response?.status === 200) {
-          console.log("Messaged slack about new market addition, ", fm.question)
+          console.log("Messaged slack about new market addition, ", fetchedMarket.question)
           if (isDeploy) {
-            await updateNewTrackedSlackInfo(fm.url);
+            await updateNewTrackedSlackInfo(fetchedMarket.url);
           }
         }
       }

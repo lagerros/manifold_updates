@@ -172,11 +172,11 @@ export const getAggregateMoveData = async (marketId: string, t: number): Promise
   };
 }
 
-export const fetchCorrespondingMarkets = async (localMarkets: LocalMarket[]): Promise<FetchedMarket[]> => {
+export const fetchCorrespondingMarkets = async (localMarkets: LocalMarket[]): Promise<{fetchedMarket: FetchedMarket, localMarket: LocalMarket}[]> => {
   const markets = await Promise.all(
     localMarkets
       .filter(lm => isDeploy || !ignoreDueToMicroDebugging(lm.url))
-      .map(m => getMarket(getJsonUrl(m.url)))
+      .map(async lm => ({fetchedMarket: await getMarket(getJsonUrl(lm.url)), localMarket: lm}))
   );
-  return markets.filter((market): market is FetchedMarket => market !== undefined);
+  return markets.filter(({fetchedMarket}): boolean => fetchedMarket !== undefined) as {fetchedMarket: FetchedMarket, localMarket: LocalMarket}[];
 };
