@@ -19,6 +19,12 @@ export const listenAndSendErrorsToSlack = async () => {
   
 export const systemHealthUpdate = async (): Promise<void> => {
   if (devWebhook) {
-    await sendDevSlackUpdate(devWebhook, {channelId: devChannelId, message: `Bot is running (${isDeploy ? " :tophat: production" : " :computer: dev"}). :white_check_mark:`})
+    await sendDevSlackUpdate(devWebhook, {channelId: devChannelId, message: `Bot still running (${isDeploy ? " :tophat: production" : " :computer: dev"}). :white_check_mark:`})
+  }
+}
+
+export const systemStartUpdate = async (): Promise<void> => {
+  if (devWebhook) {
+    await sendDevSlackUpdate(devWebhook, {channelId: devChannelId, message: `Bot restarted (${isDeploy ? " :tophat: production" : " :computer: dev"}). :white_check_mark:`})
   }
 }

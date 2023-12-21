@@ -13,7 +13,6 @@ export const devChannelId = "C06ACLAUTDE"
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 
-
 export const channelId = isDeploy ? prodChannelId : devChannelId;
 export const mainWebhook = process.env[`SLACK_MAIN_WEBHOOK`]
 export const devWebhook = process.env[`SLACK_DEV_CHANNEL_WEBHOOK`]
