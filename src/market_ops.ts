@@ -138,7 +138,7 @@ const getMoversNote = async (marketId: string, t: number): Promise<{briefMoversN
   const longMoversNote = 
     `\n${getMoveEmoji(move.stats.moveSize)} ${move.movers.length} Movers\n` +
     getLongMoveNote(move) +
-    `${getMoveEmoji(move.stats.moveSize)} ${counterMove.movers.length} Countermovers\n` +
+    `${getMoveEmoji(counterMove.stats.moveSize)} ${counterMove.movers.length} Countermovers\n` +
     getLongMoveNote(counterMove);
   
   return {briefMoversNote:"", longMoversNote} 
