@@ -120,7 +120,7 @@ const getMoveEmoji = (moveSize: number): string => {
 const getLongMoveNote = (move:AggregateMove): string => {
   return (
     `Top 3 traders effect: ${formatProb(move.stats.top3moversEffect)}\n
-    Effect percentile: 20th: ${formatProb(move.stats.effect20cohort)}, 50th: ${formatProb(move.stats.effect50cohort)}, 80th: ${formatProb(move.stats.effect80cohort)}\n
+    Effect percentile (proportion of traders needed to get this percentile of the market move): 20th: ${formatProb(move.stats.effect20cohort)}, 50th: ${formatProb(move.stats.effect50cohort)}, 80th: ${formatProb(move.stats.effect80cohort)}\n
     ${move.movers.slice(0, 3).map(m => `--- ${m.userName}: ${formatProb(m.probChangeTotal)} (${m.numBets} bets)`).join('\n')}\n
   `)
 }
@@ -138,7 +138,7 @@ const getMoversNote = async (marketId: string, t: number): Promise<{briefMoversN
   const longMoversNote = 
     `\n${getMoveEmoji(move.stats.moveSize)} ${move.movers.length} Movers\n` +
     getLongMoveNote(move) +
-    `${getMoveEmoji(move.stats.moveSize)} ${move.movers.length} Countermovers\n` +
+    `${getMoveEmoji(move.stats.moveSize)} ${counterMove.movers.length} Countermovers\n` +
     getLongMoveNote(counterMove);
   
   return {briefMoversNote:"", longMoversNote} 
