@@ -1,5 +1,5 @@
 import moment from "moment";
-import { updateLocalMarket, updateLastSlackInfo as updateDbLastSlackInfo, updateNewTrackedSlackInfo } from "./database";
+import { updateLocalMarket, updateLastSlackInfo, updateNewTrackedSlackInfo } from "./database";
 import { getBets, getComments, getMarket, getUniquePositions, getAggregateMoveData, fetchCorrespondingMarkets } from "./manifold_api";
 import { sendSlackMessage } from "./slack";
 import { FetchedMarket, LocalMarket, Answer, probChangesType, ChangeNote, ChangeReport, AggregateMove } from "./types";
@@ -195,8 +195,8 @@ export const checkAndSendUpdates = async (localMarkets: LocalMarket[]): Promise<
             channelId, 
             more_info: (await getMoreInfo(fetchedMarket)) + longMoversNote
           });  
-        if (slackResponse?.status === 200 && isDeploy) {
-          await updateDbLastSlackInfo(fetchedMarket.url, timeWindow, changeNote);
+        if (slackResponse?.status === 200) {
+          await updateLastSlackInfo(fetchedMarket.url, timeWindow, changeNote);
         }
       }
     }
@@ -212,7 +212,7 @@ export const checkForNewAdditions = async (localMarkets: LocalMarket[]): Promise
       console.log("No local market found for fetched market", fetchedMarket.url);
       return;
     }
-    if (!localMarket.last_track_status_slack_time && (!isDeploy && !ignoreDueToMicroDebugging(fetchedMarket.url))) {
+    if (!localMarket.last_track_status_slack_time || (!isDeploy && !ignoreDueToMicroDebugging(fetchedMarket.url))) {
       console.log("new tracked market found", fetchedMarket.url, "\n");
 
       if (SLACK_ON) {
@@ -225,9 +225,7 @@ export const checkForNewAdditions = async (localMarkets: LocalMarket[]): Promise
         });
         if (response?.status === 200) {
           console.log("Messaged slack about new market addition, ", fetchedMarket.question)
-          if (isDeploy) {
-            await updateNewTrackedSlackInfo(fetchedMarket.url);
-          }
+          await updateNewTrackedSlackInfo(fetchedMarket.url);
         }
       }
     }
