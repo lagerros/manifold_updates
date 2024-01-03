@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 import { fetchTrackedQuestions, keepAwakeHack, copyProdToDev } from './database';
 import { checkAndSendUpdates, checkForNewAdditions } from './market_ops';
-import { systemHealthUpdate, systemStartUpdate } from './system_health';
+import { systemHealthUpdate, systemStartUpdate, listenAndSendErrorsToSlack } from './system_health';
 
 const hourlyTask = async () => {
   try {
@@ -23,3 +23,4 @@ setInterval(copyProdToDev, 24 * 60 * 60 * 1000); // 1 day
 
 systemStartUpdate()
 hourlyTask();
+listenAndSendErrorsToSlack();
