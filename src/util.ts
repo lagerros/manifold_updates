@@ -12,9 +12,9 @@ export const formatProb = (prob: number): string => Math.round(prob * 100).toStr
 export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const isTimeForNewUpdate = (localMarket:LocalMarket, timeWindow:number) => {
-//  console.log(localMarket.url, "last slack time: ", localMarket.lastslacktime, "timeWindow: ", timeWindow, timeWindow * 60 * 60 * 1000, "Date now: ", Date.now())
+  console.log(localMarket.url, "last slack time: ", localMarket.lastslacktime, "timeWindow: ", timeWindow, timeWindow * 60 * 60 * 1000, "Date now: ", Date.now())
   if ( localMarket.lastslacktime ) {
-  //  console.log( ", last date: ", (new Date(localMarket.lastslacktime).getTime()), "Date diff: ", (Date.now() - new Date(localMarket.lastslacktime).getTime())) 
+    console.log( ", last date: ", (new Date(localMarket.lastslacktime).getTime()), "Date diff: ", (Date.now() - new Date(localMarket.lastslacktime).getTime())) 
   }
   return (!localMarket.lastslacktime ? true : ((Date.now() - new Date(localMarket.lastslacktime).getTime()) > (timeWindow * 60 * 60 * 1000)))
 }

@@ -2,7 +2,6 @@ import { Client } from 'pg';
 import { isDeploy } from './run_settings';
 import { LocalMarket } from './types';
 import { slackConsoleError } from './system_health';
-import { slackConsoleError } from './system_health';
 
 const prod_markets_name = 'markets'
 const dev_markets_name = 'markets_dev'
@@ -19,7 +18,6 @@ const client = new Client({
 
 client.connect(err => {
   if (err) {
-    slackConsoleError(`Failed to connect to the ${env_name} database! ${err.stack}`);
     slackConsoleError(`Failed to connect to the ${env_name} database! ${err.stack}`);
   } else {
     console.log(`Successfully connected to the ${env_name} database.`);
@@ -42,7 +40,6 @@ export const fetchTrackedQuestions = async (): Promise<LocalMarket[]|undefined> 
     return trackedMarkets;
   } catch (error) {
     slackConsoleError(`Error fetching tracked questions  ${error}`);
-    slackConsoleError(`Error fetching tracked questions  ${error}`);
   }
 };
 
@@ -56,7 +53,6 @@ export const updateLastSlackInfo = async (url: string, timeWindow: number, last_
     const result = await client.query(queryText, [timeWindow, url, last_report_sent]);
     console.log('Updated lastslacktime and lastslackhourwindow in the database.');
   } catch (error) {
-    slackConsoleError(`Error updating lastslacktime and lastslackhourwindow in the database: ${error}`);
     slackConsoleError(`Error updating lastslacktime and lastslackhourwindow in the database: ${error}`);
   }
 };
@@ -72,7 +68,6 @@ export const updateNewTrackedSlackInfo = async (url: string): Promise<void> => {
     await client.query(queryText, [url]);
     console.log(`Updated last_track_status_slack_time in the ${env_name} database.`);
   } catch (error) {
-    slackConsoleError(`Error updating last_track_status_slack_time in the database: ${error}`);
     slackConsoleError(`Error updating last_track_status_slack_time in the database: ${error}`);
   }
 };
@@ -98,7 +93,6 @@ export const keepAwakeHack = async (): Promise<void> => {
     console.log('Pinged db to stay awake.');
   } catch (error) {
     slackConsoleError(`Error pinging db to stay awake: ${error}`);
-    slackConsoleError(`Error pinging db to stay awake: ${error}`);
   }
 }
 
@@ -109,7 +103,6 @@ export const copyProdToDev = async (): Promise<void> => {
     await client.query(queryText);
     console.log('Copied prod markets db data to markets_dev.');
   } catch (error) {
-    slackConsoleError(`Error copying prod markets data to dev: ${error}`);
     slackConsoleError(`Error copying prod markets data to dev: ${error}`);
   }
 }
