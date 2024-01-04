@@ -1,5 +1,5 @@
 import moment from "moment";
-import { updateLocalMarket, updateLastSlackInfo, updateNewTrackedSlackInfo } from "./database";
+import { updateLastSlackInfo, updateNewTrackedSlackInfo } from "./database";
 import { getBets, getComments, getMarket, getUniquePositions, getAggregateMoveData, fetchCorrespondingMarkets } from "./manifold_api";
 import { sendSlackMessage } from "./slack";
 import { FetchedMarket, LocalMarket, Answer, probChangesType, ChangeNote, ChangeReport, AggregateMove } from "./types";

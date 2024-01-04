@@ -27,6 +27,7 @@ export const sendSlackMessage = async ({
     more_info
   };
   try {
+    
     const webhook = process.env['SLACK_MAIN_WEBHOOK']
     if (webhook) {
       const response = await axios.post(webhook, payload, {

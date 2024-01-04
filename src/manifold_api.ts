@@ -3,13 +3,14 @@ import { Bet, FetchedMarket, Comment, Position, Mover, MoveStats, AggregateMove,
 import moment from "moment";
 import { getJsonUrl, ignoreDueToMicroDebugging } from "./util";
 import { isDeploy } from "./run_settings";
+import {slackConsoleError} from "./system_health";
 
 export const getMarket = async (url: string): Promise<FetchedMarket|undefined> => {
   try {
     const response = await axios.get(url);
     return response.data;
   } catch (error) {
-    console.error(`Error occurred while getting market: ${error}`);
+    slackConsoleError(`Error occurred while getting market: ${error}`);
   }
 }
 
@@ -18,7 +19,7 @@ export const getMarkets = async (): Promise<FetchedMarket[]|undefined> => {
     const response = await axios.get('https://manifold.markets/api/v0/markets?limit=10');
     return response.data;
   } catch (error) {
-    console.error(`Error occurred while getting markets: ${error}`);
+    slackConsoleError(`Error occurred while getting markets: ${error}`);
   }
 };
 

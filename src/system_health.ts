@@ -1,19 +1,22 @@
 import { sendDevSlackUpdate } from './slack';
 import { devAlertsChannelId, devWebhook, isDeploy } from './run_settings';
 
+export const slackConsoleError = (message:any) => {
+  console.error(message)
+  if (devWebhook && isDeploy) { // Only send errors to slack in production
+    sendDevSlackUpdate(devWebhook, {channelId: devAlertsChannelId, message}) 
+  }
+}
+
 export const listenAndSendErrorsToSlack = async () => {
   process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', error);
-    if (devWebhook) {
-      sendDevSlackUpdate(devWebhook, { channelId: devAlertsChannelId, message: `Error in program. Uncaught Exception at: ${error}` })
-    }
+    slackConsoleError(`Uncaught Exception: ${error}`);
   });
 
-  process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    if (devWebhook) {
-      sendDevSlackUpdate(devWebhook, { channelId: devAlertsChannelId, message: `Error in program. Unhandled Rejection at: ${promise} reason: ${reason}` })
-    }
+  process.on('unhandledRejection', async (reason, promise) => {
+    const promiseResult = JSON.stringify(await promise);
+    const message = `Unhandled Rejection at: ${promiseResult} reason: ${reason}`;
+    slackConsoleError(message)
   });
 }
 
