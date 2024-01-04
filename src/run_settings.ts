@@ -1,10 +1,10 @@
-export const microDebugging:string[] = [] 
 export const isDeploy = process.env[`IS_DEPLOY`] === `true`;
 
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 // User settings
+export const microDebugging:string[] = [] 
 export const SLACK_ON = isDeploy || false;
 export const delta = 0.1 // The threshold we use for when to report a change
 export const prodChannelId = "C069HTSPS69"

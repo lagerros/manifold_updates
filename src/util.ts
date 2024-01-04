@@ -32,6 +32,6 @@ export const useMicrodebugging = (url:string):boolean => {
 }
 
 export const ignoreDueToMicroDebugging = (url: string): boolean => { // TODO: fix, this logic is getting confusing
-  return useMicrodebugging(url) && !microDebugging.includes(url) && !isDeploy;
+  return !useMicrodebugging(url) || (!microDebugging.includes(url) && !isDeploy);
 }
 
