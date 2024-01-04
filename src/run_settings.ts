@@ -1,11 +1,11 @@
-export const microDebugging:string[] = ["https://manifold.markets/JacobJacob/which-risk-categories-and-concepts"] 
+export const microDebugging:string[] = [] 
 export const isDeploy = process.env[`IS_DEPLOY`] === `true`;
 
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 // User settings
-export const SLACK_ON = isDeploy || true;
+export const SLACK_ON = isDeploy || false;
 export const delta = 0.1 // The threshold we use for when to report a change
 export const prodChannelId = "C069HTSPS69"
 export const devAlertsChannelId = "C06ACLAUTDE"
