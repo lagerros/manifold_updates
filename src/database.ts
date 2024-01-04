@@ -50,7 +50,7 @@ export const updateLastSlackInfo = async (url: string, timeWindow: number, last_
   `;
   try {
     const result = await client.query(queryText, [timeWindow, url, last_report_sent]);
-    console.log('Updated lastslacktime and lastslackhourwindow in the database.', result);
+    console.log('Updated lastslacktime and lastslackhourwindow in the database.');
   } catch (error) {
     console.error('Error updating lastslacktime and lastslackhourwindow in the database:', error);
   }

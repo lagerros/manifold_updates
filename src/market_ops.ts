@@ -184,7 +184,7 @@ export const checkAndSendUpdates = async (localMarkets: LocalMarket[]): Promise<
     const isUpdateTime = isTimeForNewUpdate(localMarket, timeWindow);
     logReportStatus(reportWorthy, isUpdateTime, changeNote, fetchedMarket.url);
 
-    if ((reportWorthy && isUpdateTime) || (!isDeploy && !ignoreDueToMicroDebugging(fetchedMarket.url))) {
+    if ((reportWorthy && isUpdateTime) || (!ignoreDueToMicroDebugging(fetchedMarket.url))) {
       if (SLACK_ON) {
         const slackResponse = await sendSlackMessage({ 
             url: fetchedMarket.url, 
@@ -196,7 +196,8 @@ export const checkAndSendUpdates = async (localMarkets: LocalMarket[]): Promise<
             more_info: (await getMoreInfo(fetchedMarket)) + longMoversNote
           });  
         if (slackResponse?.status === 200) {
-          await updateLastSlackInfo(fetchedMarket.url, timeWindow, changeNote);
+          
+          await updateLastSlackInfo(localMarket.url, timeWindow, changeNote);
         }
       }
     }
@@ -212,7 +213,7 @@ export const checkForNewAdditions = async (localMarkets: LocalMarket[]): Promise
       console.log("No local market found for fetched market", fetchedMarket.url);
       return;
     }
-    if (!localMarket.last_track_status_slack_time || (!isDeploy && !ignoreDueToMicroDebugging(fetchedMarket.url))) {
+    if (!localMarket.last_track_status_slack_time || (!ignoreDueToMicroDebugging(fetchedMarket.url))) {
       console.log("new tracked market found", fetchedMarket.url, "\n");
 
       if (SLACK_ON) {
