@@ -179,7 +179,7 @@ const getMoreInfo = async (market: FetchedMarket): Promise<string> => {
 
 export const checkAndSendUpdates = async (localMarkets: LocalMarket[]): Promise<void> => {
   const pairs = await fetchCorrespondingMarkets(localMarkets);
-  pairs.forEach(async ({fetchedMarket, localMarket}) => {
+  for (const {fetchedMarket, localMarket} of pairs) {
     const { reportWorthy, changeNote, comments, num_comments, longMoversNote, timeWindow } = await getMarketReport(fetchedMarket);
     const isUpdateTime = isTimeForNewUpdate(localMarket, timeWindow);
     logReportStatus(reportWorthy, isUpdateTime, changeNote, fetchedMarket.url);
@@ -208,7 +208,7 @@ export const checkAndSendUpdates = async (localMarkets: LocalMarket[]): Promise<
 export const checkForNewAdditions = async (localMarkets: LocalMarket[]): Promise<void> => {
   const pairs = await fetchCorrespondingMarkets(localMarkets);
   
-  pairs.forEach(async ({fetchedMarket, localMarket}) => {
+  for (const {fetchedMarket, localMarket} of pairs) {
     if (!localMarket) {
       console.log("No local market found for fetched market", fetchedMarket.url);
       return;

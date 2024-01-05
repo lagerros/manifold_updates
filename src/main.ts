@@ -1,6 +1,7 @@
 import 'dotenv/config';
 
 import { fetchTrackedQuestions, keepAwakeHack, copyProdToDev } from './database';
+import { runMigrations } from './database_migrations';
 import { checkAndSendUpdates, checkForNewAdditions } from './market_ops';
 import { systemHealthUpdate, systemStartUpdate, listenAndSendErrorsToSlack } from './system_health';
 
@@ -15,6 +16,8 @@ const hourlyTask = async () => {
     console.error(error);
   }
 };
+
+runMigrations();
 
 setInterval(keepAwakeHack, 4 * 60 * 1000); // 4 minutes
 setInterval(hourlyTask, 60 * 60 * 1000); // 1 hour

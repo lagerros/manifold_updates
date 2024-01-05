@@ -5,11 +5,11 @@ import { slackConsoleError } from './system_health';
 
 const prod_markets_name = 'markets'
 const dev_markets_name = 'markets_dev'
-const markets_table_name = isDeploy ? prod_markets_name : dev_markets_name;
-const env_name = isDeploy ? 'prod' : 'dev'
+export const markets_table_name = isDeploy ? prod_markets_name : dev_markets_name;
+export const env_name = isDeploy ? 'prod' : 'dev'
 
 
-const client = new Client({
+export const client = new Client({
   connectionString: process.env['DATABASE_URL'],
   ssl: {
     rejectUnauthorized: false
