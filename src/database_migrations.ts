@@ -25,15 +25,20 @@ export const runMigrations = async () => {
   `;
 
   const createTriggerCommand = `
-    DROP TRIGGER IF EXISTS lastslacktime_trigger ON ${markets_table_name}};
+    DROP TRIGGER IF EXISTS lastslacktime_trigger ON ${markets_table_name};
     CREATE TRIGGER lastslacktime_trigger
     AFTER UPDATE OF lastslacktime ON ${markets_table_name}
     FOR EACH ROW EXECUTE PROCEDURE check_lastslacktime();
   `;
 
-  await client.query(createTableCommand);
-  await client.query(createFunctionCommand);
-  await client.query(createTriggerCommand);
+  try {
+    await client.query(createTableCommand);
+    await client.query(createFunctionCommand);
+    await client.query(createTriggerCommand);
+    console.log('Done with migrations')
+  } catch (error) {
+    console.error(`Error creating migration table: ${error}`);
+  }
 };
 
 // bug hunting..... 

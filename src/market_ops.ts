@@ -201,7 +201,7 @@ export const checkAndSendUpdates = async (localMarkets: LocalMarket[]): Promise<
         }
       }
     }
-  })
+  }
 };
 
 
@@ -231,5 +231,5 @@ export const checkForNewAdditions = async (localMarkets: LocalMarket[]): Promise
         }
       }
     }
-  })  
+  }
 }
