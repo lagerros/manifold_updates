@@ -1,11 +1,12 @@
-import { microDebugging, isDeploy } from "./run_settings";
-import { LocalMarket, FetchedMarket } from "./types";
+import chalk from "chalk";
+import { microDebugging, isDeploy } from "./run_settings.js";
+import { LocalMarket, FetchedMarket } from "./types.js";
 
-export const getJsonUrl = (url: string): string => {
+export const getSlug = (url: string): string => {
   const urlObj = new URL(url);
   const slug = urlObj.pathname.split("/").pop();
-  console.log("Slug:", slug);
-  return `https://manifold.markets/api/v0/slug/${slug}`;
+  console.log(chalk.dim("Slug:", slug));
+  return slug || "";
 };
 
 export const formatProb = (prob: number): string =>
@@ -19,21 +20,25 @@ export const isTimeForNewUpdate = (
   timeWindow: number
 ) => {
   console.log(
-    localMarket.url,
-    "last slack time: ",
-    localMarket.lastslacktime,
-    "timeWindow: ",
-    timeWindow,
-    timeWindow * 60 * 60 * 1000,
-    "Date now: ",
-    Date.now()
+    chalk.dim(
+      localMarket.url,
+      "last slack time: ",
+      localMarket.lastslacktime,
+      "timeWindow: ",
+      timeWindow,
+      timeWindow * 60 * 60 * 1000,
+      "Date now: ",
+      Date.now()
+    )
   );
   if (localMarket.lastslacktime) {
     console.log(
-      ", last date: ",
-      new Date(localMarket.lastslacktime).getTime(),
-      "Date diff: ",
-      Date.now() - new Date(localMarket.lastslacktime).getTime()
+      chalk.dim(
+        ", last date: ",
+        new Date(localMarket.lastslacktime).getTime(),
+        "Date diff: ",
+        Date.now() - new Date(localMarket.lastslacktime).getTime()
+      )
     );
   }
   return !localMarket.lastslacktime
@@ -68,3 +73,21 @@ export const ignoreDueToMicroDebugging = (url: string): boolean => {
     !useMicrodebugging(url) || (!microDebugging.includes(url) && !isDeploy)
   );
 };
+
+export function normalizeUrl(url: string): string {
+  try {
+    const parsedUrl = new URL(url);
+    // Reconstruct the URL without query parameters and fragment
+    return `${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}`;
+  } catch (error) {
+    console.error(chalk.red(`Error normalizing URL: ${url}`), error);
+    return url; // Fallback to original URL if normalization fails
+  }
+}
+
+export function indent(text: string, spaces: number = 2): string {
+  return text
+    .split("\n")
+    .map((line) => " ".repeat(spaces) + line)
+    .join("\n");
+}

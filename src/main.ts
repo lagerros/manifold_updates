@@ -6,18 +6,19 @@ import {
   updateNewTrackedSlackInfo,
   keepAwakeHack,
   copyProdToDev,
-} from "./airtable";
-import { runMigrations } from "./database_migrations";
-import { checkAndSendUpdates, checkForNewAdditions } from "./market_ops";
+} from "./airtable.js";
+import { runMigrations } from "./database_migrations.js";
+import { checkAndSendUpdates, checkForNewAdditions } from "./market_ops.js";
 import {
   systemHealthUpdate,
   systemStartUpdate,
   listenAndSendErrorsToSlack,
-} from "./system_health";
+} from "./system_health.js";
+import chalk from "chalk";
 
 const hourlyTask = async () => {
   try {
-    console.log("Starting hourlyTask...");
+    console.log(chalk.bgGrey("Starting hourlyTask..."));
     const questions = await fetchTrackedQuestions();
     if (!!questions) {
       console.log(`Fetched ${questions.length} tracked questions.`);
@@ -26,9 +27,9 @@ const hourlyTask = async () => {
     } else {
       console.log("No tracked questions fetched.");
     }
-    console.log("Finished hourlyTask.\n");
+    console.log(chalk.bgGrey("Finished hourlyTask.\n"));
   } catch (error) {
-    console.error("Error in hourlyTask:", error);
+    console.error(chalk.red("Error in hourlyTask:", error));
   }
 };
 
@@ -42,7 +43,7 @@ setInterval(() => {
 setInterval(() => {
   console.log("Running hourlyTask...");
   hourlyTask();
-}, 60 * 60 * 1000); // 1 hour
+}, 20 * 1000); // 60 * 60 * 1000); // 1 hour
 
 setInterval(() => {
   console.log("Running systemHealthUpdate...");
@@ -54,7 +55,7 @@ setInterval(() => {
   copyProdToDev();
 }, 24 * 60 * 60 * 1000); // 1 day
 
-console.log("Starting application...");
+console.log(chalk.bold(chalk.bgWhite(">>>> Starting application...")));
 systemStartUpdate();
 hourlyTask();
 listenAndSendErrorsToSlack();

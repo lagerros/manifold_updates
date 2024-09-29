@@ -8,20 +8,37 @@ import {
   MoveStats,
   AggregateMove,
   LocalMarket,
-} from "./types";
+} from "./types.js";
 import moment from "moment";
-import { getJsonUrl, ignoreDueToMicroDebugging } from "./util";
-import { isDeploy } from "./run_settings";
-import { slackConsoleError } from "./system_health";
+import { getSlug, ignoreDueToMicroDebugging } from "./util.js";
+import { isDeploy } from "./run_settings.js";
+import { slackConsoleError } from "./system_health.js";
+import chalk from "chalk";
 
 export const getMarket = async (
-  url: string
+  marketId: string
 ): Promise<FetchedMarket | undefined> => {
   try {
-    const response = await axios.get(url);
+    const response = await axios.get(
+      `https://manifold.markets/api/v0/market/${marketId}`
+    );
     return response.data;
   } catch (error) {
     slackConsoleError(`Error occurred while getting market: ${error}`);
+  }
+};
+
+// src/manifold_api.ts
+export const getMarketBySlug = async (
+  slug: string
+): Promise<FetchedMarket | undefined> => {
+  try {
+    const response = await axios.get(
+      `https://manifold.markets/api/v0/slug/${slug}`
+    );
+    return response.data;
+  } catch (error) {
+    slackConsoleError(`Error occurred while getting market by slug: ${error}`);
   }
 };
 
@@ -51,7 +68,7 @@ export const getComments = async (
     );
     return recentComments;
   } catch (error) {
-    console.error(`Error occurred while getting comments: ${error}`);
+    console.error(chalk.red(`Error occurred while getting comments: ${error}`));
   }
 };
 
@@ -76,7 +93,7 @@ export const getBets = async (
 
     return bets;
   } catch (error) {
-    console.error(`Error occurred while getting bets: ${error}`);
+    console.error(chalk.red(`Error occurred while getting bets: ${error}`));
   }
 };
 
@@ -89,7 +106,9 @@ export const getPositions = async (
     );
     return response.data;
   } catch (error) {
-    console.error(`Error occurred while getting positions: ${error}`);
+    console.error(
+      chalk.red(`Error occurred while getting positions: ${error}`)
+    );
   }
 };
 
@@ -126,7 +145,9 @@ export const getUniquePositions = async (
       .sort((a, b) => b.shares - a.shares);
     return { yesPositions, noPositions };
   } catch (error) {
-    console.error(`Error occurred while getting positions: ${error}`);
+    console.error(
+      chalk.red(`Error occurred while getting positions: ${error}`)
+    );
   }
 };
 
@@ -249,7 +270,7 @@ export const fetchCorrespondingMarkets = async (
     localMarkets
       // .filter((lm) => isDeploy || !ignoreDueToMicroDebugging(lm.url))
       .map(async (lm) => ({
-        fetchedMarket: await getMarket(getJsonUrl(lm.url)),
+        fetchedMarket: await getMarketBySlug(getSlug(lm.url)),
         localMarket: lm,
       }))
   );

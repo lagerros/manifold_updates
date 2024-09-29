@@ -1,6 +1,10 @@
 import moment from "moment";
 // import { updateLastSlackInfo, updateNewTrackedSlackInfo } from "./database";
-import { updateLastSlackInfo, updateNewTrackedSlackInfo } from "./airtable";
+import {
+  updateLastSlackInfo,
+  updateNewTrackedSlackInfo,
+  updateMarketNameInAirtable,
+} from "./airtable.js";
 import {
   getBets,
   getComments,
@@ -8,8 +12,8 @@ import {
   getUniquePositions,
   getAggregateMoveData,
   fetchCorrespondingMarkets,
-} from "./manifold_api";
-import { sendSlackMessage } from "./slack";
+} from "./manifold_api.js";
+import { sendSlackMessage } from "./slack.js";
 import {
   FetchedMarket,
   LocalMarket,
@@ -18,23 +22,24 @@ import {
   ChangeNote,
   ChangeReport,
   AggregateMove,
-} from "./types";
+} from "./types.js";
 import {
   formatProb,
   getCorrespondingMarket,
-  getJsonUrl,
   getName,
   ignoreDueToMicroDebugging,
+  indent,
   isTimeForNewUpdate,
-} from "./util";
+} from "./util.js";
 import {
   microDebugging,
   SLACK_ON,
   isDeploy,
   delta,
   channelId,
-} from "./run_settings";
-import { logReportStatus } from "./logging";
+} from "./run_settings.js";
+import { logReportStatus } from "./logging.js";
+import chalk from "chalk";
 
 const getProbChange = async (
   contractId: string,
@@ -329,12 +334,18 @@ export const checkAndSendUpdates = async (
   console.log(`Fetched ${pairs.length} market pairs.`);
   if (pairs.length < localMarkets.length) {
     console.warn(
-      `!! Warning: Fetched fewer pairs (${pairs.length}) than local markets (${localMarkets.length}). Some markets may be missing.`
+      chalk.yellow(
+        `!! Warning: Fetched fewer pairs (${pairs.length}) than local markets (${localMarkets.length}). Some markets may be missing.`
+      )
     );
   }
 
   for (const { fetchedMarket, localMarket } of pairs) {
-    console.log(`Processing market: ${fetchedMarket.url}`);
+    console.log(
+      chalk.italic(
+        chalk.gray(`Processing market: `, chalk.underline(fetchedMarket.url))
+      )
+    );
     const {
       reportWorthy,
       changeNote,
@@ -344,21 +355,38 @@ export const checkAndSendUpdates = async (
       timeWindow,
     } = await getMarketReport(fetchedMarket);
 
-    console.log(`Market report for ${fetchedMarket.url}:`, {
-      reportWorthy,
-      changeNote,
-      timeWindow,
-    });
+    console.log(
+      chalk.dim(
+        indent(
+          `Market report for` + chalk.underline(`${fetchedMarket.url}:`),
+          12
+        ),
+        indent(
+          JSON.stringify({
+            reportWorthy,
+            changeNote,
+            timeWindow,
+          }),
+          12
+        )
+      )
+    );
 
     const isUpdateTime = isTimeForNewUpdate(localMarket, timeWindow);
     logReportStatus(reportWorthy, isUpdateTime, changeNote, fetchedMarket.url);
 
     if (
-      (reportWorthy && isUpdateTime) ||
-      !isDeploy // && !ignoreDueToMicroDebugging(fetchedMarket.url))
+      reportWorthy &&
+      isUpdateTime // !isDeploy && !ignoreDueToMicroDebugging(fetchedMarket.url)
     ) {
       if (SLACK_ON) {
-        console.log(`Sending Slack message for market: ${fetchedMarket.url}`);
+        console.log(
+          chalk.green(`#`),
+          chalk.yellow(`#`),
+          chalk.red(`#`),
+          chalk.blue(`#`),
+          `Sending Slack message for market: ${fetchedMarket.url}`
+        );
         const slackResponse = await sendSlackMessage({
           url: fetchedMarket.url,
           market_name: getName(fetchedMarket),
@@ -372,12 +400,14 @@ export const checkAndSendUpdates = async (
         });
         if (slackResponse?.status === 200) {
           console.log(
-            `Slack message sent successfully for ${fetchedMarket.url}`
+            chalk.green(
+              `Slack message sent successfully for ${fetchedMarket.url}`
+            )
           );
           await updateLastSlackInfo(localMarket.url, timeWindow, changeNote);
         } else {
           console.error(
-            `Failed to send Slack message for ${fetchedMarket.url}`
+            chalk.red(`Failed to send Slack message for ${fetchedMarket.url}`)
           );
         }
       }
@@ -403,7 +433,9 @@ export const checkForNewAdditions = async (
     }
 
     console.log(
-      `Checking new addition for market: ${fetchedMarket.url}, last_track_status_slack_time: ${localMarket.last_track_status_slack_time}`
+      chalk.dim(
+        `Checking new addition for market: ${fetchedMarket.url}, last_track_status_slack_time: ${localMarket.last_track_status_slack_time}`
+      )
     );
 
     if (
@@ -414,6 +446,10 @@ export const checkForNewAdditions = async (
 
       if (SLACK_ON) {
         console.log(
+          chalk.green(`#`),
+          chalk.yellow(`#`),
+          chalk.red(`#`),
+          chalk.blue(`#`),
           `Sending Slack message for new market addition: ${fetchedMarket.url}`
         );
         const response = await sendSlackMessage({
@@ -425,16 +461,23 @@ export const checkForNewAdditions = async (
         });
         if (response?.status === 200) {
           console.log(
+            chalk.green(`###`),
             "Messaged Slack about new market addition:",
             fetchedMarket.question
           );
           await updateNewTrackedSlackInfo(fetchedMarket.url);
         } else {
           console.error(
-            `Failed to send Slack message for ${fetchedMarket.url}`
+            chalk.red(`Failed to send Slack message for ${fetchedMarket.url}`)
           );
         }
       }
+
+      // Update the 'Name' field in Airtable with the market's question
+      await updateMarketNameInAirtable(
+        fetchedMarket.url,
+        fetchedMarket.question
+      );
     }
   }
   console.log("Finished checkForNewAdditions.\n");

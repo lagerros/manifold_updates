@@ -1,7 +1,10 @@
 import Airtable, { FieldSet, Records, Table } from "airtable";
-import { isDeploy } from "./run_settings";
-import { LocalMarket } from "./types";
-import { slackConsoleError } from "./system_health";
+import { isDeploy } from "./run_settings.js";
+import { LocalMarket } from "./types.js";
+import { slackConsoleError } from "./system_health.js";
+import { getSlug, normalizeUrl } from "./util.js";
+import chalk from "chalk";
+import { getMarket, getMarketBySlug } from "./manifold_api.js";
 
 const apiKey = process.env.AIRTABLE_WEB_TOKEN;
 const baseId = process.env.AIRTABLE_BASE_ID;
@@ -35,6 +38,7 @@ export const fetchTrackedQuestions = async (): Promise<
         fields: [
           "_id",
           "url",
+          "Name",
           "lastslacktime",
           "lastslackhourwindow",
           "tracked",
@@ -45,9 +49,44 @@ export const fetchTrackedQuestions = async (): Promise<
 
     console.log(`Fetched ${records.length} records from Airtable.`);
 
+    // Iterate over records to check for missing 'Name' field
+    for (const record of records) {
+      const url = normalizeUrl(record.get("url") as string);
+      const name = record.get("Name");
+      if (!name && url) {
+        console.log(
+          chalk.yellow(
+            `Name is missing for URL: ${url}. Fetching market data...`
+          )
+        );
+
+        // Fetch the market data
+        const market = await getMarketBySlug(getSlug(url));
+        if (market) {
+          const marketName = market.question;
+
+          // Update the 'Name' field in Airtable
+          await table.update(record.id, {
+            Name: marketName,
+          });
+          console.log(
+            chalk.green(
+              `Updated 'Name' field in Airtable with name`,
+              chalk.dim(`"${marketName}".`)
+            )
+          );
+        } else {
+          console.error(
+            chalk.red(`Failed to fetch market data for URL: ${url}`)
+          );
+        }
+      }
+    }
+
+    // Map records to LocalMarket[]
     const trackedMarkets: LocalMarket[] = records.map((record) => ({
       _id: record.get("_id") as string,
-      url: record.get("url") as string,
+      url: normalizeUrl(record.get("url") as string),
       lastslacktime: record.get("lastslacktime")
         ? new Date(record.get("lastslacktime") as string)
         : undefined,
@@ -73,10 +112,13 @@ export const updateLastSlackInfo = async (
   last_report_sent: string
 ): Promise<void> => {
   try {
-    console.log(`Updating last slack info for URL: ${url}`);
+    const normalizedUrl = normalizeUrl(url);
+    console.log(
+      chalk.dim(`Updating last slack info for URL: ${normalizedUrl}`)
+    );
     const records = await table
       .select({
-        filterByFormula: `{url} = '${url}'`,
+        filterByFormula: `SEARCH("${normalizedUrl}", {url}) > 0`,
         maxRecords: 1,
       })
       .firstPage();
@@ -88,9 +130,13 @@ export const updateLastSlackInfo = async (
         lastslackhourwindow: timeWindow,
         last_report_sent: last_report_sent,
       });
-      console.log("Updated lastslacktime and lastslackhourwindow in Airtable.");
+      console.log(
+        chalk.green(
+          "Updated lastslacktime and lastslackhourwindow in Airtable."
+        )
+      );
     } else {
-      console.error(`No record found with url: ${url}`);
+      console.error(chalk.red(`No record found with url: ${normalizedUrl}`));
     }
   } catch (error) {
     slackConsoleError(`Error updating lastslacktime in Airtable: ${error}`);
@@ -100,9 +146,10 @@ export const updateLastSlackInfo = async (
 // Update new tracked slack info
 export const updateNewTrackedSlackInfo = async (url: string): Promise<void> => {
   try {
+    const normalizedUrl = normalizeUrl(url);
     const records = await table
       .select({
-        filterByFormula: `{url} = '${url}'`,
+        filterByFormula: `SEARCH("${normalizedUrl}", {url}) > 0`,
         maxRecords: 1,
       })
       .firstPage();
@@ -112,9 +159,13 @@ export const updateNewTrackedSlackInfo = async (url: string): Promise<void> => {
       await table.update(record.id, {
         last_track_status_slack_time: new Date().toISOString(),
       });
-      console.log(`Updated last_track_status_slack_time in Airtable.`);
+      console.log(
+        chalk.green(
+          `Updated last_track_status_slack_time in Airtable for ${normalizedUrl}.`
+        )
+      );
     } else {
-      console.error(`No record found with url: ${url}`);
+      console.error(chalk.red(`No record found with url: ${normalizedUrl}`));
     }
   } catch (error) {
     slackConsoleError(
@@ -165,5 +216,35 @@ export const copyProdToDev = async (): Promise<void> => {
     slackConsoleError(
       `Error copying data from Prod to Dev Airtable table: ${error}`
     );
+  }
+};
+
+// Update market name in Airtable
+export const updateMarketNameInAirtable = async (
+  url: string,
+  marketName: string
+): Promise<void> => {
+  try {
+    const normalizedUrl = normalizeUrl(url);
+    const records = await table
+      .select({
+        filterByFormula: `SEARCH("${normalizedUrl}", {url}) > 0`,
+        maxRecords: 1,
+      })
+      .firstPage();
+
+    if (records.length > 0) {
+      const record = records[0];
+      await table.update(record.id, {
+        Name: marketName,
+      });
+      console.log(
+        chalk.green(`Updated 'Name' field in Airtable for ${normalizedUrl}.`)
+      );
+    } else {
+      console.error(chalk.red(`No record found with url: ${normalizedUrl}`));
+    }
+  } catch (error) {
+    slackConsoleError(`Error updating 'Name' field in Airtable: ${error}`);
   }
 };

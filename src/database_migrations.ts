@@ -1,6 +1,7 @@
-import { client, env_name, markets_table_name } from './database';
-import {devAlertsChannelId, devWebhook} from './run_settings';
-import {sendDevSlackUpdate} from './slack';
+import chalk from "chalk";
+import { client, env_name, markets_table_name } from "./database.js";
+import { devAlertsChannelId, devWebhook } from "./run_settings.js";
+import { sendDevSlackUpdate } from "./slack.js";
 
 export const runMigrations = async () => {
   const createTableCommand = `
@@ -35,22 +36,27 @@ export const runMigrations = async () => {
     await client.query(createTableCommand);
     await client.query(createFunctionCommand);
     await client.query(createTriggerCommand);
-    console.log('Done with migrations')
+    console.log("Done with migrations");
   } catch (error) {
-    console.error(`Error creating migration table: ${error}`);
+    console.error(chalk.red(`Error creating migration table: ${error}`));
   }
 };
 
-// bug hunting..... 
-client.query('LISTEN new_entry');
-client.on('notification', async (msg) => {
-  if (msg.channel === 'new_entry') {
+// bug hunting.....
+client.query("LISTEN new_entry");
+client.on("notification", async (msg) => {
+  if (msg.channel === "new_entry") {
     const payload = msg.payload;
     if (payload) {
       const logEntry = JSON.parse(payload);
-      console.log(`lastslacktime was set to NULL. Log entry: ${logEntry.message}`)
+      console.log(
+        `lastslacktime was set to NULL. Log entry: ${logEntry.message}`
+      );
       if (devWebhook) {
-        await sendDevSlackUpdate(devWebhook, { channelId: devAlertsChannelId, message: `lastslacktime was set to NULL. Log entry: ${logEntry.message}` });
+        await sendDevSlackUpdate(devWebhook, {
+          channelId: devAlertsChannelId,
+          message: `lastslacktime was set to NULL. Log entry: ${logEntry.message}`,
+        });
       }
     }
   }
