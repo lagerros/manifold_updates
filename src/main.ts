@@ -16,9 +16,9 @@ import {
 } from "./system_health.js";
 import chalk from "chalk";
 
-const hourlyTask = async () => {
+const minutelyTask = async () => {
   try {
-    console.log(chalk.bgGrey("Starting hourlyTask..."));
+    console.log(chalk.bgGrey("Starting minutelyTask..."));
     const questions = await fetchTrackedQuestions();
     if (!!questions) {
       console.log(`Fetched ${questions.length} tracked questions.`);
@@ -27,9 +27,9 @@ const hourlyTask = async () => {
     } else {
       console.log("No tracked questions fetched.");
     }
-    console.log(chalk.bgGrey("Finished hourlyTask.\n"));
+    console.log(chalk.bgGrey("Finished minutelyTask.\n"));
   } catch (error) {
-    console.error(chalk.red("Error in hourlyTask:", error));
+    console.error(chalk.red("Error in minutelyTask:", error));
   }
 };
 
@@ -41,9 +41,9 @@ setInterval(() => {
 }, 4 * 60 * 1000); // 4 minutes
 
 setInterval(() => {
-  console.log("Running hourlyTask...");
-  hourlyTask();
-}, 20 * 1000); // 60 * 60 * 1000); // 1 hour
+  console.log("Running minutelyTask...");
+  minutelyTask();
+}, 60 * 1000); // 1 minute
 
 setInterval(() => {
   console.log("Running systemHealthUpdate...");
@@ -57,5 +57,5 @@ setInterval(() => {
 
 console.log(chalk.bold(chalk.bgWhite(">>>> Starting application...")));
 systemStartUpdate();
-hourlyTask();
+minutelyTask();
 listenAndSendErrorsToSlack();
