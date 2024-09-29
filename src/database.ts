@@ -28,9 +28,8 @@ client.connect((err) => {
   }
 });
 
-export const fetchTrackedQuestions = async (): Promise<
-  LocalMarket[] | undefined
-> => {
+
+export const fetchTrackedQuestions = async (): Promise<LocalMarket[] | undefined> => {
   const queryText = `SELECT _id, url, lastslacktime, lastslackhourwindow, tracked, last_track_status_slack_time FROM ${markets_table_name} WHERE tracked = true`;
   try {
     const res = await client.query(queryText);
@@ -118,7 +117,7 @@ export const keepAwakeHack = async (): Promise<void> => {
 
 export const copyProdToDev = async (): Promise<void> => {
   const queryText = `TRUNCATE ${dev_markets_name};
-    INSERT INTO ${dev_markets_name} SELECT * FROM markets;`;
+    INSERT INTO ${dev_markets_name} SELECT * FROM ${prod_markets_name};`
   try {
     await client.query(queryText);
     console.log("Copied prod markets db data to markets_dev.");
