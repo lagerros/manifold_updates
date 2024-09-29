@@ -1,4 +1,5 @@
 import axios from "axios";
+import chalk from "chalk";
 
 export const sendSlackMessage = async ({
   url,
@@ -7,7 +8,7 @@ export const sendSlackMessage = async ({
   report,
   channelId,
   comments,
-  more_info
+  more_info,
 }: {
   url: string;
   market_name: string;
@@ -24,34 +25,48 @@ export const sendSlackMessage = async ({
     comments,
     market_id,
     report,
-    more_info
+    more_info,
   };
   try {
-    
-    const webhook = process.env['SLACK_MAIN_WEBHOOK']
+    const webhook = process.env["SLACK_MAIN_WEBHOOK"];
     if (webhook) {
       const response = await axios.post(webhook, payload, {
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
-      return response
+      return response;
     }
   } catch (error: any) {
-    console.error(`Error occurred while sending Slack message: ${JSON.stringify(error.response.data)}`);
+    console.error(
+      chalk.red(
+        `####Error occurred while sending Slack message: ${JSON.stringify(
+          error.response.data
+        )}`
+      )
+    );
   }
 };
 
 // TODO: make this the main slack function
-export const sendDevSlackUpdate = async (webhook:string, payload:{message:string, channelId:string}) => {
+export const sendDevSlackUpdate = async (
+  webhook: string,
+  payload: { message: string; channelId: string }
+) => {
   try {
     const response = await axios.post(webhook, payload, {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
-    return response
+    return response;
   } catch (error: any) {
-    console.error(`Error occurred while sending Slack message: ${JSON.stringify(error.response.data)}`);
+    console.error(
+      chalk.red(
+        `#### Error occurred while sending Slack message: ${JSON.stringify(
+          error.response.data
+        )}`
+      )
+    );
   }
-}
+};
