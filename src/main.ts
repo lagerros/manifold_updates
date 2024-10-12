@@ -43,7 +43,7 @@ setInterval(() => {
 setInterval(() => {
   console.log("Running minutelyTask...");
   minutelyTask();
-}, 60 * 1000); // 1 minute
+}, 5 * 60 * 1000); // 1 minute
 
 setInterval(() => {
   console.log("Running systemHealthUpdate...");
