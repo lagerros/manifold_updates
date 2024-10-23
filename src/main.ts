@@ -35,10 +35,10 @@ const minutelyTask = async () => {
 
 // runMigrations();
 
-setInterval(() => {
-  console.log("Running keepAwakeHack...");
-  keepAwakeHack();
-}, 4 * 60 * 1000); // 4 minutes
+// setInterval(() => {
+//   console.log("Running keepAwakeHack...");
+//   keepAwakeHack();
+// }, 4 * 60 * 1000); // 4 minutes
 
 setInterval(() => {
   console.log("Running minutelyTask...");
@@ -50,10 +50,10 @@ setInterval(() => {
   systemHealthUpdate();
 }, 24 * 60 * 60 * 1000); // 1 day
 
-setInterval(() => {
-  console.log("Running copyProdToDev...");
-  copyProdToDev();
-}, 24 * 60 * 60 * 1000); // 1 day
+// setInterval(() => {
+//   console.log("Running copyProdToDev...");
+//   copyProdToDev();
+// }, 24 * 60 * 60 * 1000); // 1 day
 
 console.log(chalk.bold(chalk.bgWhite(">>>> Starting application...")));
 systemStartUpdate();
